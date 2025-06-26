@@ -161,6 +161,41 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {/* Become a Provider Section - Only for non-providers */}
+        {!isProvider && (
+          <Card className="mb-8 bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-slate-900 mb-2">
+                    Become a Service Provider
+                  </h3>
+                  <p className="text-slate-600 mb-4">
+                    Start offering your services to clients. Set up your professional profile, 
+                    manage appointments, and grow your business on our platform.
+                  </p>
+                  <div className="flex flex-wrap gap-2 text-sm text-slate-500">
+                    <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded">✓ Multiple Services</span>
+                    <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded">✓ Flexible Pricing</span>
+                    <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded">✓ Walk-in Support</span>
+                    <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded">✓ Payment Options</span>
+                  </div>
+                </div>
+                <div className="ml-6">
+                  <Button 
+                    onClick={() => setLocation('/provider-setup')} 
+                    size="lg"
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    <Users className="h-4 w-4 mr-2" />
+                    Get Started
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <Card>

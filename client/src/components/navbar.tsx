@@ -140,11 +140,18 @@ export default function Navbar() {
                         Dashboard
                       </Link>
                     </DropdownMenuItem>
-                    {isProvider && (
+                    {isProvider ? (
                       <DropdownMenuItem asChild>
                         <Link href="/provider-setup">
                           <Settings className="mr-2 h-4 w-4" />
                           Profile Setup
+                        </Link>
+                      </DropdownMenuItem>
+                    ) : (
+                      <DropdownMenuItem asChild>
+                        <Link href="/provider-setup">
+                          <Briefcase className="mr-2 h-4 w-4" />
+                          Become a Provider
                         </Link>
                       </DropdownMenuItem>
                     )}
@@ -181,6 +188,18 @@ export default function Navbar() {
                         </div>
                       </div>
                       <NavItems mobile onItemClick={() => setMobileMenuOpen(false)} />
+                      {!isProvider && (
+                        <Link href="/provider-setup">
+                          <Button
+                            variant="outline"
+                            className="w-full justify-start"
+                            onClick={() => setMobileMenuOpen(false)}
+                          >
+                            <Briefcase className="h-4 w-4 mr-2" />
+                            Become a Provider
+                          </Button>
+                        </Link>
+                      )}
                       <Button
                         variant="outline"
                         onClick={handleLogout}
