@@ -145,7 +145,7 @@ export default function ProviderProfile() {
               
               <div className="text-center">
                 <div className="text-3xl font-bold text-slate-900 mb-1">
-                  ${provider.hourlyRate || '0'}
+                  ₹{provider.hourlyRate || '0'}
                 </div>
                 <div className="text-slate-600 mb-4">per hour</div>
                 <Button onClick={handleBookAppointment} size="lg" className="w-full">

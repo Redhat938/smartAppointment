@@ -112,6 +112,7 @@ Changelog:
 - June 26, 2025: Implemented booking settings UI in provider dashboard with validation and API endpoints
 - June 26, 2025: Localized platform for Indian market with Indian cities, names, currency (₹), and phone numbers
 - June 26, 2025: Fixed appointment booking calendar with proper date/time formatting and 30-minute slots
+- June 26, 2025: Updated all frontend currency displays from $ to ₹ across provider cards, booking pages, and profiles
 ```
 
 ## User Preferences

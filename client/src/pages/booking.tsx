@@ -21,8 +21,7 @@ import {
   MapPin, 
   User, 
   ArrowLeft,
-  Star,
-  DollarSign
+  Star
 } from "lucide-react";
 import { isUnauthorizedError } from "@/lib/authUtils";
 
@@ -185,7 +184,7 @@ export default function Booking() {
                         </span>
                       </div>
                       <span className="text-lg font-bold text-slate-900">
-                        ${provider.hourlyRate}/hr
+                        ₹{provider.hourlyRate}/hr
                       </span>
                     </div>
                   </div>
@@ -337,13 +336,12 @@ export default function Booking() {
                   </div>
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-slate-600">Rate:</span>
-                    <span className="font-medium">${provider.hourlyRate}/hour</span>
+                    <span className="font-medium">₹{provider.hourlyRate}/hour</span>
                   </div>
                   <div className="flex justify-between items-center text-lg font-bold border-t pt-2">
                     <span>Total:</span>
                     <span className="flex items-center">
-                      <DollarSign className="h-5 w-5" />
-                      {((parseFloat(provider.hourlyRate || "0") * parseInt(duration)) / 60).toFixed(2)}
+                      ₹{((parseFloat(provider.hourlyRate || "0") * parseInt(duration)) / 60).toFixed(2)}
                     </span>
                   </div>
                 </div>

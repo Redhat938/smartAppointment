@@ -84,7 +84,7 @@ export default function ProviderCard({ provider }: ProviderCardProps) {
           </div>
           <div className="text-right">
             <span className="text-lg font-bold text-slate-900">
-              ${provider.hourlyRate || '0'}
+              ₹{provider.hourlyRate || '0'}
             </span>
             <span className="text-slate-600 text-sm">/hr</span>
           </div>
