@@ -208,13 +208,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Not authorized to update this provider's availability" });
       }
       
-      const schedule = z.array(insertAvailabilitySchema).parse(req.body);
+      console.log("Received availability data:", JSON.stringify(req.body, null, 2));
+      
+      // Create a more flexible schema that only requires essential fields
+      const availabilitySchema = z.object({
+        dayOfWeek: z.number().min(0).max(6),
+        startTime: z.string(),
+        endTime: z.string(),
+        isAvailable: z.boolean(),
+      });
+      
+      const schedule = z.array(availabilitySchema).parse(req.body);
       const scheduleWithProviderId = schedule.map(slot => ({ ...slot, providerId: id }));
       
       await storage.setProviderAvailability(id, scheduleWithProviderId);
       res.json({ message: "Availability updated successfully" });
     } catch (error) {
       if (error instanceof z.ZodError) {
+        console.error("Validation errors:", error.errors);
         return res.status(400).json({ message: "Invalid availability data", errors: error.errors });
       }
       console.error("Error updating provider availability:", error);

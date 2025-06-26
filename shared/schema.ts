@@ -268,6 +268,11 @@ export const insertAppointmentSchema = createInsertSchema(appointments).omit({
 export const insertAvailabilitySchema = createInsertSchema(availability).omit({
   id: true,
   createdAt: true,
+}).extend({
+  // Transform string providerId to number
+  providerId: z.union([z.string(), z.number()]).transform((val) => 
+    typeof val === 'string' ? parseInt(val) : val
+  ).optional(),
 });
 
 export const insertReviewSchema = createInsertSchema(reviews).omit({
