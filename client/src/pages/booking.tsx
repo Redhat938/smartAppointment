@@ -114,10 +114,33 @@ export default function Booking() {
   }
 
   const handleBooking = () => {
-    if (!selectedDate || !selectedTime || !title || !selectedServiceId) {
+    // For token-based services, time selection is not required
+    const requiresTimeSlot = selectedService?.bookingType !== 'token';
+    
+    // Check required fields based on service type
+    if (!selectedDate || !selectedServiceId) {
       toast({
         title: "Missing Information",
-        description: "Please fill in all required fields and select a service.",
+        description: "Please select a date and service.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (requiresTimeSlot && !selectedTime) {
+      toast({
+        title: "Time Required",
+        description: "Please select a time slot for this appointment.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // For non-token services, title is required. For token services, auto-generate
+    if (!title && selectedService?.bookingType !== 'token') {
+      toast({
+        title: "Title Required",
+        description: "Please enter an appointment title.",
         variant: "destructive",
       });
       return;
@@ -133,17 +156,22 @@ export default function Booking() {
     }
 
     const scheduledDate = new Date(`${selectedDate}T00:00:00`);
-    const startTime = selectedTime;
+    const startTime = selectedTime || "00:00"; // Default for token-based
     const durationMinutes = selectedService.duration;
-    const [hours, minutes] = selectedTime.split(':').map(Number);
+    const [hours, minutes] = startTime.split(':').map(Number);
     const endTimeHours = Math.floor((hours * 60 + minutes + durationMinutes) / 60);
     const endTimeMinutes = (hours * 60 + minutes + durationMinutes) % 60;
     const endTime = `${String(endTimeHours).padStart(2, '0')}:${String(endTimeMinutes).padStart(2, '0')}`;
 
+    // Auto-generate title for token-based services
+    const appointmentTitle = selectedService.bookingType === 'token'
+      ? `${selectedService.name} - ${new Date(selectedDate).toLocaleDateString()}`
+      : title;
+
     const bookingData = {
       providerId: parseInt(providerId!),
       serviceId: parseInt(selectedServiceId),
-      title,
+      title: appointmentTitle,
       description,
       scheduledDate: scheduledDate.toISOString(),
       startTime,
@@ -255,29 +283,59 @@ export default function Booking() {
               </CardContent>
             </Card>
 
-            {/* Appointment Details */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Appointment Details</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div>
-                  <Label htmlFor="title">Appointment Title *</Label>
-                  <Input
-                    id="title"
-                    placeholder="e.g., Consultation, Follow-up, etc."
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    className="mt-2"
-                  />
-                </div>
+            {/* Appointment Details - Conditional based on service type */}
+            {selectedService && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>
+                    {selectedService.bookingType === 'token' ? 'Visit Details' : 'Appointment Details'}
+                  </CardTitle>
+                  {selectedService.bookingType === 'token' && (
+                    <p className="text-sm text-slate-600">
+                      Your appointment title will be auto-generated. You can add notes about your visit.
+                    </p>
+                  )}
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {selectedService.bookingType === 'token' ? (
+                    // Token-based: Auto-generate title, optional description
+                    <div>
+                      <Label>Auto-generated Title</Label>
+                      <div className="mt-2 p-3 bg-slate-50 rounded-md border">
+                        <span className="text-slate-700">
+                          {selectedService.name} - {new Date(selectedDate).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-500 mt-1">
+                        Title is automatically created based on service and date
+                      </p>
+                    </div>
+                  ) : (
+                    // Regular booking: Manual title
+                    <div>
+                      <Label htmlFor="title">Appointment Title *</Label>
+                      <Input
+                        id="title"
+                        placeholder="e.g., Consultation, Follow-up, etc."
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                        className="mt-2"
+                      />
+                    </div>
+                  )}
 
-                <div>
-                  <Label htmlFor="description">Description (Optional)</Label>
-                  <Textarea
-                    id="description"
-                    placeholder="Describe what you'd like to discuss or any specific questions you have..."
-                    value={description}
+                  <div>
+                    <Label htmlFor="description">
+                      {selectedService.bookingType === 'token' ? 'Visit Notes (Optional)' : 'Description (Optional)'}
+                    </Label>
+                    <Textarea
+                      id="description"
+                      placeholder={
+                        selectedService.bookingType === 'token' 
+                          ? "Any specific symptoms, concerns, or notes for your visit..."
+                          : "Describe what you'd like to discuss or any specific questions you have..."
+                      }
+                      value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     className="mt-2"
                     rows={3}
@@ -324,24 +382,59 @@ export default function Booking() {
                     )}
                   </RadioGroup>
                 </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            )}
 
-            {/* Date & Time Selection */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Select Date & Time</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <AvailabilityCalendar
-                  providerId={parseInt(providerId!)}
-                  selectedDate={selectedDate}
-                  selectedTime={selectedTime}
-                  onDateSelect={setSelectedDate}
-                  onTimeSelect={setSelectedTime}
-                />
-              </CardContent>
-            </Card>
+            {/* Date & Time Selection - Conditional based on service type */}
+            {selectedService && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>
+                    {selectedService.bookingType === 'token' ? 'Select Date' : 'Select Date & Time'}
+                  </CardTitle>
+                  {selectedService.bookingType === 'token' && (
+                    <p className="text-sm text-slate-600">
+                      You'll receive a token number for queue-based service. No specific time slot required.
+                    </p>
+                  )}
+                </CardHeader>
+                <CardContent>
+                  {selectedService.bookingType === 'token' ? (
+                    // Token-based booking: Only date selection
+                    <div className="space-y-4">
+                      <div className="flex justify-center">
+                        <AvailabilityCalendar
+                          providerId={parseInt(providerId!)}
+                          selectedDate={selectedDate}
+                          selectedTime=""
+                          onDateSelect={setSelectedDate}
+                          onTimeSelect={() => {}}
+                          hideTimeSelection={true}
+                        />
+                      </div>
+                      <div className="bg-blue-50 p-4 rounded-lg">
+                        <h4 className="font-medium text-blue-900 mb-2">Queue-based Service</h4>
+                        <p className="text-sm text-blue-700">
+                          • You'll get a token number upon arrival<br/>
+                          • Service provided in order of arrival<br/>
+                          • Estimated wait time will be provided
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    // Regular timeslot booking
+                    <AvailabilityCalendar
+                      providerId={parseInt(providerId!)}
+                      selectedDate={selectedDate}
+                      selectedTime={selectedTime}
+                      onDateSelect={setSelectedDate}
+                      onTimeSelect={setSelectedTime}
+                    />
+                  )}
+                </CardContent>
+              </Card>
+            )}
           </div>
 
           {/* Booking Summary */}
@@ -410,7 +503,13 @@ export default function Booking() {
 
                 <Button 
                   onClick={handleBooking}
-                  disabled={!selectedDate || !selectedTime || !title || !selectedService || bookingMutation.isPending}
+                  disabled={
+                    !selectedDate || 
+                    !selectedService || 
+                    (selectedService?.bookingType !== 'token' && !selectedTime) ||
+                    (selectedService?.bookingType !== 'token' && !title) ||
+                    bookingMutation.isPending
+                  }
                   className="w-full"
                   size="lg"
                 >

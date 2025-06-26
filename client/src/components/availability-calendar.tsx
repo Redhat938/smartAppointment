@@ -13,6 +13,7 @@ interface AvailabilityCalendarProps {
   selectedTime: string;
   onDateSelect: (date: string) => void;
   onTimeSelect: (time: string) => void;
+  hideTimeSelection?: boolean;
 }
 
 interface AvailabilitySlot {
@@ -27,7 +28,8 @@ export default function AvailabilityCalendar({
   selectedDate,
   selectedTime,
   onDateSelect,
-  onTimeSelect
+  onTimeSelect,
+  hideTimeSelection = false
 }: AvailabilityCalendarProps) {
   const [calendarDate, setCalendarDate] = useState<Date>(new Date());
 
@@ -97,7 +99,7 @@ export default function AvailabilityCalendar({
   };
 
   return (
-    <div className="space-y-6 xl:grid xl:grid-cols-2 xl:gap-6 xl:space-y-0">
+    <div className={hideTimeSelection ? "max-w-md mx-auto" : "space-y-6 xl:grid xl:grid-cols-2 xl:gap-6 xl:space-y-0"}>
       {/* Calendar */}
       <Card className="xl:min-w-0">
         <CardHeader>
@@ -131,8 +133,9 @@ export default function AvailabilityCalendar({
         </CardContent>
       </Card>
 
-      {/* Time Slots */}
-      <Card className="xl:min-w-0">
+      {/* Time Slots - Only show if not hidden */}
+      {!hideTimeSelection && (
+        <Card className="xl:min-w-0">
         <CardHeader>
           <CardTitle className="flex items-center">
             <Clock className="h-5 w-5 mr-2" />
@@ -175,38 +178,6 @@ export default function AvailabilityCalendar({
           )}
         </CardContent>
       </Card>
-
-      {/* Selection Summary */}
-      {selectedDate && selectedTime && (
-        <div className="lg:col-span-2">
-          <Card className="bg-primary/5 border-primary/20">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium text-slate-900">Selected Appointment</p>
-                  <div className="flex items-center space-x-4 mt-1">
-                    <Badge variant="secondary">
-                      {format(new Date(selectedDate), 'EEEE, MMMM d, yyyy')}
-                    </Badge>
-                    <Badge variant="secondary">
-                      {format(new Date(`2000-01-01T${selectedTime}`), 'h:mm a')}
-                    </Badge>
-                  </div>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    onDateSelect('');
-                    onTimeSelect('');
-                  }}
-                >
-                  Clear Selection
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
       )}
     </div>
   );
