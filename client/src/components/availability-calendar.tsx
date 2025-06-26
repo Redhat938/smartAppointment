@@ -107,7 +107,7 @@ export default function AvailabilityCalendar({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="w-full overflow-hidden">
+          <div className="w-full">
             <Calendar
               mode="single"
               selected={selectedDateObj || undefined}
@@ -115,7 +115,7 @@ export default function AvailabilityCalendar({
               disabled={isDateDisabled}
               month={calendarDate}
               onMonthChange={setCalendarDate}
-              className="rounded-md border w-full"
+              className="rounded-md border w-full [&_table]:w-full [&_th]:min-w-[2.5rem] [&_td]:min-w-[2.5rem] [&_button]:w-full [&_button]:min-w-[2.5rem]"
             />
           </div>
           <div className="mt-4 space-y-2">

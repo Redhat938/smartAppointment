@@ -89,6 +89,35 @@
   border-color: hsl(221, 83%, 53%);
 }
 
+/* Calendar component fixes */
+.rdp {
+  width: 100% !important;
+}
+
+.rdp-table {
+  width: 100% !important;
+  table-layout: fixed !important;
+}
+
+.rdp-head_cell,
+.rdp-cell {
+  width: 14.28% !important;
+  min-width: 2.5rem !important;
+}
+
+.rdp-button {
+  width: 100% !important;
+  min-width: 2.5rem !important;
+  height: 2.5rem !important;
+}
+
+.rdp-day {
+  width: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
 .availability-slot {
   transition: all 0.2s ease;
 }
