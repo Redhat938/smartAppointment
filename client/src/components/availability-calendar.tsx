@@ -51,12 +51,12 @@ export default function AvailabilityCalendar({
       const start = new Date(`2000-01-01T${startTime}`);
       const end = new Date(`2000-01-01T${endTime}`);
       
-      // Generate 1-hour slots
+      // Generate 30-minute slots (more suitable for appointments)
       let current = new Date(start);
       while (current < end) {
         const timeString = current.toTimeString().slice(0, 5);
         slots.push(timeString);
-        current.setHours(current.getHours() + 1);
+        current.setMinutes(current.getMinutes() + 30);
       }
     });
 

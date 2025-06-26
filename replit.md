@@ -110,6 +110,8 @@ Changelog:
 - June 26, 2025: Enhanced booking system with configurable booking types (token, timeslot, service, teleconsult)
 - June 26, 2025: Added provider booking settings with daily capacity, slot duration, buffer time, and auto-ETA
 - June 26, 2025: Implemented booking settings UI in provider dashboard with validation and API endpoints
+- June 26, 2025: Localized platform for Indian market with Indian cities, names, currency (₹), and phone numbers
+- June 26, 2025: Fixed appointment booking calendar with proper date/time formatting and 30-minute slots
 ```
 
 ## User Preferences

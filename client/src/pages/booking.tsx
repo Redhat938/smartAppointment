@@ -116,23 +116,25 @@ export default function Booking() {
       return;
     }
 
-    const scheduledDate = new Date(`${selectedDate}T${selectedTime}`);
+    const scheduledDate = new Date(`${selectedDate}T00:00:00`);
     const startTime = selectedTime;
     const durationMinutes = parseInt(duration);
-    const endTimeDate = new Date(scheduledDate.getTime() + durationMinutes * 60000);
-    const endTime = endTimeDate.toTimeString().slice(0, 5);
+    const [hours, minutes] = selectedTime.split(':').map(Number);
+    const endTimeHours = Math.floor((hours * 60 + minutes + durationMinutes) / 60);
+    const endTimeMinutes = (hours * 60 + minutes + durationMinutes) % 60;
+    const endTime = `${String(endTimeHours).padStart(2, '0')}:${String(endTimeMinutes).padStart(2, '0')}`;
 
     const bookingData = {
       providerId: parseInt(providerId!),
       title,
       description,
-      scheduledDate,
+      scheduledDate: scheduledDate.toISOString(),
       startTime,
       endTime,
       duration: durationMinutes,
       type: appointmentType,
       amount: parseFloat(provider.hourlyRate || "0"),
-      currency: provider.currency || "USD",
+      currency: provider.currency || "₹",
     };
 
     bookingMutation.mutate(bookingData);
