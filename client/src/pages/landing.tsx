@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useLocation } from "wouter";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -183,19 +183,18 @@ export default function Landing() {
             {categories.map((category: any) => {
               const IconComponent = categoryIcons[category.id as keyof typeof categoryIcons] || Briefcase;
               return (
-                <Link
+                <Card 
                   key={category.id}
-                  href={`/search?category=${category.id}`}
+                  className="category-card text-center p-6 cursor-pointer border-2 hover:border-primary"
+                  onClick={() => setLocation(`/search?category=${category.id}`)}
                 >
-                  <Card className="category-card text-center p-6 cursor-pointer border-2 hover:border-primary">
-                    <CardContent className="p-0">
-                      <div className={`w-16 h-16 bg-${category.color}-100 rounded-full flex items-center justify-center mx-auto mb-4`}>
-                        <IconComponent className={`h-8 w-8 text-${category.color}-600`} />
-                      </div>
-                      <h3 className="font-semibold text-slate-900 mb-2">{category.name}</h3>
-                    </CardContent>
-                  </Card>
-                </Link>
+                  <CardContent className="p-0">
+                    <div className={`w-16 h-16 bg-${category.color}-100 rounded-full flex items-center justify-center mx-auto mb-4`}>
+                      <IconComponent className={`h-8 w-8 text-${category.color}-600`} />
+                    </div>
+                    <h3 className="font-semibold text-slate-900 mb-2">{category.name}</h3>
+                  </CardContent>
+                </Card>
               );
             })}
           </div>
@@ -247,22 +246,25 @@ export default function Landing() {
                       </Badge>
                     )}
                   </div>
-                  <Link href={`/provider/${provider.id}`}>
-                    <Button className="w-full">
-                      View Profile & Book
-                    </Button>
-                  </Link>
+                  <Button 
+                    className="w-full"
+                    onClick={() => setLocation(`/provider/${provider.id}`)}
+                  >
+                    View Profile & Book
+                  </Button>
                 </CardContent>
               </Card>
             ))}
           </div>
 
           <div className="text-center mt-12">
-            <Link href="/search">
-              <Button variant="outline" size="lg">
-                View All Providers
-              </Button>
-            </Link>
+            <Button 
+              variant="outline" 
+              size="lg"
+              onClick={() => setLocation("/search")}
+            >
+              View All Providers
+            </Button>
           </div>
         </div>
       </section>
