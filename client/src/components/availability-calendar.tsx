@@ -97,9 +97,9 @@ export default function AvailabilityCalendar({
   };
 
   return (
-    <div className="grid lg:grid-cols-2 gap-6">
+    <div className="space-y-6 xl:grid xl:grid-cols-2 xl:gap-6 xl:space-y-0">
       {/* Calendar */}
-      <Card>
+      <Card className="xl:min-w-0">
         <CardHeader>
           <CardTitle className="flex items-center">
             <CalendarIcon className="h-5 w-5 mr-2" />
@@ -107,15 +107,17 @@ export default function AvailabilityCalendar({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <Calendar
-            mode="single"
-            selected={selectedDateObj || undefined}
-            onSelect={handleDateSelect}
-            disabled={isDateDisabled}
-            month={calendarDate}
-            onMonthChange={setCalendarDate}
-            className="rounded-md border"
-          />
+          <div className="w-full overflow-hidden">
+            <Calendar
+              mode="single"
+              selected={selectedDateObj || undefined}
+              onSelect={handleDateSelect}
+              disabled={isDateDisabled}
+              month={calendarDate}
+              onMonthChange={setCalendarDate}
+              className="rounded-md border w-full"
+            />
+          </div>
           <div className="mt-4 space-y-2">
             <div className="flex items-center space-x-2 text-sm">
               <div className="w-4 h-4 bg-primary rounded"></div>
@@ -130,7 +132,7 @@ export default function AvailabilityCalendar({
       </Card>
 
       {/* Time Slots */}
-      <Card>
+      <Card className="xl:min-w-0">
         <CardHeader>
           <CardTitle className="flex items-center">
             <Clock className="h-5 w-5 mr-2" />
@@ -149,7 +151,7 @@ export default function AvailabilityCalendar({
               <p className="text-slate-600">No available time slots for this date</p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-2 gap-2 max-h-96 overflow-y-auto">
               {timeSlots.map((time) => {
                 const isSelected = selectedTime === time;
                 const isPast = selectedDateObj && 
