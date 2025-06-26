@@ -103,7 +103,10 @@ This is a full-stack service booking platform built with React, Express, and Pos
 
 ```
 Changelog:
-- June 26, 2025. Initial setup
+- June 26, 2025: Initial setup of BookEase platform with React frontend and Express backend
+- June 26, 2025: Added comprehensive test data including 10 sample providers across all categories
+- June 26, 2025: Fixed SelectItem error in search filters and verified search functionality working
+- June 26, 2025: Updated sample providers to be verified/active, enabling featured providers display
 ```
 
 ## User Preferences
