@@ -1,0 +1,161 @@
+I want to upgrade my appointment booking website to be provider-first and service-flexible.
+Each service provider should have full control over how their appointments are managed.
+Please modify the system with the following features:
+
+🧱 1. Per-Service Booking Logic
+Update the system so that:
+
+A single provider can offer multiple services, each with:
+
+name, description, price, duration (minutes)
+
+booking_type: "token", "timeslot", "teleconsult", or "service"
+
+daily_capacity
+
+buffer_time (in minutes)
+
+available_days (Mon–Sun)
+
+working_hours (start & end time)
+
+All this should be configurable inside the Provider Dashboard (Add/Edit/Delete service)
+
+💰 2. Flexible Payment Options
+In each service, allow the provider to set:
+
+payment_mode: "online", "offline", or "both"
+
+payment_policy: "advance", "after", or "optional"
+
+For now, mock online payments (e.g., fake Razorpay checkout)
+
+In the user flow:
+
+If online and advance, require payment to confirm
+
+If offline, show "Pay at time of appointment"
+
+If both, allow user to choose
+
+Show payment status in provider dashboard, allow manual marking as paid for offline bookings
+
+✍️ 3. Manual Walk-In Appointment Entry
+Allow providers to:
+
+Manually add walk-in patients by filling:
+
+Patient name, phone number
+
+Choose service
+
+Set time or auto-fill next available slot
+
+Add notes
+
+These should be marked as source: "walk-in" in the system
+
+In the dashboard:
+
+Show online + walk-in bookings in one queue
+
+Allow sorting/filtering by source, date, and service
+
+🚨 4. Appointment Prioritization System
+In the provider's dashboard:
+
+For each appointment, show:
+
+Patient name
+
+Service
+
+Type (icon: online / walk-in)
+
+Status: pending, done, cancelled
+
+⭐ [Mark as Priority] → moves to top of queue
+
+✅ [Mark as Done]
+
+❌ [Cancel]
+
+Queue should auto-sort:
+
+Priority = true first
+
+Then by time
+
+🆔 5. Unique Token ID + Return Visit Waiver
+For every appointment:
+
+Generate a unique token_id (UUID or short code)
+
+Display it on booking confirmation and provider view
+
+Return-visit waiver logic:
+
+In each service, allow:
+
+waive_fee_on_return: true/false
+
+waiver_period_days: number (e.g., 30)
+
+If the same patient (matched by user_id or phone+name) had a completed appointment within that period:
+
+Set fee = 0
+
+Flag as waived: true
+
+Show a message: “Your consultation fee is waived for return visit!”
+
+🧾 6. Provider Dashboard UI Changes
+Update dashboard to show:
+
+List of services with Edit/Delete options
+
+Booking Settings per service
+
+Manual booking form
+
+Appointment queue:
+
+Source icon (online/walk-in)
+
+Payment status
+
+Waived status
+
+Token ID
+
+Priority actions
+
+Make the UI responsive and usable on mobile devices.
+
+📦 7. Data Model Adjustments
+Update models accordingly:
+
+js
+Copy
+Edit
+Service {
+  name, description, price, duration,
+  booking_type, daily_capacity, buffer_time,
+  available_days, working_hours,
+  payment_mode, payment_policy,
+  waive_fee_on_return, waiver_period_days
+}
+
+Appointment {
+  token_id, user_id (nullable), name, phone,
+  service_id, provider_id, source (online/walk-in),
+  status (pending/done/cancelled), scheduled_at,
+  fee, waived (boolean), priority (boolean), payment_status
+}
+🧠 Notes:
+Use modular components for service forms, booking types, and queues.
+
+Use placeholders/mock logic for online payments and notifications (real ones can be added later).
+
+Ensure all booking flows adapt based on booking_type and payment_mode.
+

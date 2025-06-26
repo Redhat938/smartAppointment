@@ -93,24 +93,54 @@ export const blockedSlots = pgTable("blocked_slots", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Appointments
+// Provider Services - Each provider can offer multiple services
+export const services = pgTable("services", {
+  id: serial("id").primaryKey(),
+  providerId: integer("provider_id").notNull().references(() => providers.id),
+  name: varchar("name").notNull(),
+  description: text("description"),
+  price: decimal("price", { precision: 10, scale: 2 }).notNull(),
+  duration: integer("duration").notNull(), // minutes
+  bookingType: varchar("booking_type", { enum: ["token", "timeslot", "service", "teleconsult"] }).default("timeslot"),
+  dailyCapacity: integer("daily_capacity").default(20),
+  bufferTime: integer("buffer_time").default(10), // minutes
+  availableDays: jsonb("available_days").notNull(), // [0,1,2,3,4,5,6] for Sun-Sat
+  workingHours: jsonb("working_hours").notNull(), // {start: "09:00", end: "17:00"}
+  paymentMode: varchar("payment_mode", { enum: ["online", "offline", "both"] }).default("both"),
+  paymentPolicy: varchar("payment_policy", { enum: ["advance", "after", "optional"] }).default("advance"),
+  waiveFeeOnReturn: boolean("waive_fee_on_return").default(false),
+  waiverPeriodDays: integer("waiver_period_days").default(30),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Appointments - Updated to support services and walk-ins
 export const appointments = pgTable("appointments", {
   id: serial("id").primaryKey(),
-  userId: varchar("user_id").notNull().references(() => users.id),
+  tokenId: varchar("token_id").notNull().unique(), // UUID or short code
+  userId: varchar("user_id").references(() => users.id), // nullable for walk-ins
   providerId: integer("provider_id").notNull().references(() => providers.id),
-  title: varchar("title").notNull(),
-  description: text("description"),
+  serviceId: integer("service_id").notNull().references(() => services.id),
+  // Patient info (for both registered users and walk-ins)
+  patientName: varchar("patient_name").notNull(),
+  patientPhone: varchar("patient_phone").notNull(),
+  patientEmail: varchar("patient_email"),
   scheduledDate: timestamp("scheduled_date").notNull(),
   startTime: varchar("start_time").notNull(), // HH:MM format
   endTime: varchar("end_time").notNull(), // HH:MM format
   duration: integer("duration").notNull(), // minutes
   type: varchar("type", { enum: ["video", "in_person"] }).notNull(),
+  source: varchar("source", { enum: ["online", "walk-in"] }).default("online"),
   status: varchar("status", { enum: ["pending", "confirmed", "cancelled", "completed", "no_show"] }).default("pending"),
+  priority: boolean("priority").default(false),
+  fee: decimal("fee", { precision: 10, scale: 2 }).notNull(),
+  waived: boolean("waived").default(false),
+  paymentStatus: varchar("payment_status", { enum: ["pending", "paid", "failed", "refunded"] }).default("pending"),
+  paymentMethod: varchar("payment_method", { enum: ["online", "offline"] }),
   meetingLink: varchar("meeting_link"),
   notes: text("notes"),
   cancelReason: text("cancel_reason"),
-  amount: decimal("amount", { precision: 10, scale: 2 }),
-  currency: varchar("currency").default("USD"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -138,10 +168,19 @@ export const providersRelations = relations(providers, ({ one, many }) => ({
     fields: [providers.userId],
     references: [users.id],
   }),
+  services: many(services),
   appointments: many(appointments),
   availability: many(availability),
   blockedSlots: many(blockedSlots),
   reviews: many(reviews),
+}));
+
+export const servicesRelations = relations(services, ({ one, many }) => ({
+  provider: one(providers, {
+    fields: [services.providerId],
+    references: [providers.id],
+  }),
+  appointments: many(appointments),
 }));
 
 export const appointmentsRelations = relations(appointments, ({ one }) => ({
@@ -152,6 +191,10 @@ export const appointmentsRelations = relations(appointments, ({ one }) => ({
   provider: one(providers, {
     fields: [appointments.providerId],
     references: [providers.id],
+  }),
+  service: one(services, {
+    fields: [appointments.serviceId],
+    references: [services.id],
   }),
   review: one(reviews),
 }));
@@ -201,8 +244,15 @@ export const insertProviderSchema = createInsertSchema(providers).omit({
   rebookingRate: true,
 });
 
+export const insertServiceSchema = createInsertSchema(services).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export const insertAppointmentSchema = createInsertSchema(appointments).omit({
   id: true,
+  tokenId: true,
   createdAt: true,
   updatedAt: true,
 });
@@ -222,6 +272,8 @@ export type UpsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type Provider = typeof providers.$inferSelect;
 export type InsertProvider = z.infer<typeof insertProviderSchema>;
+export type Service = typeof services.$inferSelect;
+export type InsertService = z.infer<typeof insertServiceSchema>;
 export type Appointment = typeof appointments.$inferSelect;
 export type InsertAppointment = z.infer<typeof insertAppointmentSchema>;
 export type Availability = typeof availability.$inferSelect;

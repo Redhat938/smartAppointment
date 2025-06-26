@@ -12,6 +12,7 @@ import ProviderProfile from "@/pages/provider-profile";
 import Booking from "@/pages/booking";
 import Dashboard from "@/pages/dashboard";
 import ProviderSetup from "@/pages/provider-setup";
+import ProviderServices from "@/pages/provider-services";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -32,6 +33,7 @@ function Router() {
           <Route path="/booking/:providerId" component={Booking} />
           <Route path="/dashboard" component={Dashboard} />
           <Route path="/provider-setup" component={ProviderSetup} />
+          <Route path="/provider-services" component={ProviderServices} />
         </>
       )}
       <Route component={NotFound} />

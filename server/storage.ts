@@ -1,6 +1,7 @@
 import {
   users,
   providers,
+  services,
   appointments,
   availability,
   blockedSlots,
@@ -9,6 +10,8 @@ import {
   type UpsertUser,
   type Provider,
   type InsertProvider,
+  type Service,
+  type InsertService,
   type Appointment,
   type InsertAppointment,
   type Availability,
@@ -45,12 +48,43 @@ export interface IStorage {
   }): Promise<Provider[]>;
   getFeaturedProviders(limit?: number): Promise<Provider[]>;
   
-  // Appointment operations
+  // Service operations
+  createService(service: InsertService): Promise<Service>;
+  getService(id: number): Promise<Service | undefined>;
+  getProviderServices(providerId: number): Promise<Service[]>;
+  updateService(id: number, updates: Partial<InsertService>): Promise<Service>;
+  deleteService(id: number): Promise<void>;
+  checkReturnVisitWaiver(serviceId: number, patientIdentifier: string): Promise<{
+    isWaived: boolean;
+    lastVisit?: Date;
+  }>;
+  
+  // Appointment operations (enhanced for service-based booking)
   createAppointment(appointment: InsertAppointment): Promise<Appointment>;
+  createWalkInAppointment(appointment: {
+    providerId: number;
+    serviceId: number;
+    patientName: string;
+    patientPhone: string;
+    patientEmail?: string;
+    scheduledDate: Date;
+    startTime: string;
+    endTime: string;
+    duration: number;
+    type: "video" | "in_person";
+    notes?: string;
+  }): Promise<Appointment>;
   getAppointment(id: number): Promise<Appointment | undefined>;
   getUserAppointments(userId: string): Promise<Appointment[]>;
-  getProviderAppointments(providerId: number): Promise<Appointment[]>;
+  getProviderAppointments(providerId: number, filters?: {
+    source?: "online" | "walk-in";
+    status?: string;
+    serviceId?: number;
+    sortBy?: "priority" | "time";
+  }): Promise<Appointment[]>;
   updateAppointmentStatus(id: number, status: string): Promise<Appointment>;
+  updateAppointmentPriority(id: number, priority: boolean): Promise<Appointment>;
+  updatePaymentStatus(id: number, status: string, method?: string): Promise<Appointment>;
   getUpcomingAppointments(userId: string, isProvider?: boolean): Promise<Appointment[]>;
   
   // Availability operations
@@ -176,6 +210,82 @@ export class DatabaseStorage implements IStorage {
       .limit(limit);
   }
 
+  // Service operations
+  async createService(service: InsertService): Promise<Service> {
+    const [newService] = await db
+      .insert(services)
+      .values(service)
+      .returning();
+    return newService;
+  }
+
+  async getService(id: number): Promise<Service | undefined> {
+    const [service] = await db.select().from(services).where(eq(services.id, id));
+    return service;
+  }
+
+  async getProviderServices(providerId: number): Promise<Service[]> {
+    return await db
+      .select()
+      .from(services)
+      .where(and(eq(services.providerId, providerId), eq(services.isActive, true)))
+      .orderBy(services.name);
+  }
+
+  async updateService(id: number, updates: Partial<InsertService>): Promise<Service> {
+    const [service] = await db
+      .update(services)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(services.id, id))
+      .returning();
+    return service;
+  }
+
+  async deleteService(id: number): Promise<void> {
+    await db.update(services).set({ isActive: false }).where(eq(services.id, id));
+  }
+
+  async checkReturnVisitWaiver(serviceId: number, patientIdentifier: string): Promise<{
+    isWaived: boolean;
+    lastVisit?: Date;
+  }> {
+    // Get service details
+    const service = await this.getService(serviceId);
+    if (!service?.waiveFeeOnReturn) {
+      return { isWaived: false };
+    }
+
+    // Check for completed appointments within waiver period
+    const waiverDate = new Date();
+    waiverDate.setDate(waiverDate.getDate() - (service.waiverPeriodDays || 30));
+
+    const lastAppointment = await db
+      .select()
+      .from(appointments)
+      .where(
+        and(
+          eq(appointments.serviceId, serviceId),
+          eq(appointments.status, "completed"),
+          gte(appointments.scheduledDate, waiverDate),
+          // Match by phone number for walk-ins or user ID for registered users
+          patientIdentifier.includes("@") 
+            ? eq(appointments.patientEmail, patientIdentifier)
+            : eq(appointments.patientPhone, patientIdentifier)
+        )
+      )
+      .orderBy(desc(appointments.scheduledDate))
+      .limit(1);
+
+    if (lastAppointment.length > 0) {
+      return {
+        isWaived: true,
+        lastVisit: lastAppointment[0].scheduledDate,
+      };
+    }
+
+    return { isWaived: false };
+  }
+
   // Appointment operations
   async createAppointment(appointment: InsertAppointment): Promise<Appointment> {
     const [newAppointment] = await db
@@ -198,18 +308,123 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(appointments.scheduledDate));
   }
 
-  async getProviderAppointments(providerId: number): Promise<Appointment[]> {
-    return await db
+  async getProviderAppointments(providerId: number, filters?: {
+    source?: "online" | "walk-in";
+    status?: string;
+    serviceId?: number;
+    sortBy?: "priority" | "time";
+  }): Promise<Appointment[]> {
+    const conditions = [eq(appointments.providerId, providerId)];
+    
+    if (filters?.source) {
+      conditions.push(eq(appointments.source, filters.source));
+    }
+    
+    if (filters?.status) {
+      conditions.push(eq(appointments.status, filters.status));
+    }
+    
+    if (filters?.serviceId) {
+      conditions.push(eq(appointments.serviceId, filters.serviceId));
+    }
+    
+    let query = db
       .select()
       .from(appointments)
-      .where(eq(appointments.providerId, providerId))
-      .orderBy(desc(appointments.scheduledDate));
+      .where(and(...conditions));
+    
+    // Sort by priority first, then by time
+    if (filters?.sortBy === "priority") {
+      query = query.orderBy(desc(appointments.priority), asc(appointments.scheduledDate), asc(appointments.startTime));
+    } else {
+      query = query.orderBy(asc(appointments.scheduledDate), asc(appointments.startTime));
+    }
+    
+    return await query;
+  }
+
+  async createWalkInAppointment(appointment: {
+    providerId: number;
+    serviceId: number;
+    patientName: string;
+    patientPhone: string;
+    patientEmail?: string;
+    scheduledDate: Date;
+    startTime: string;
+    endTime: string;
+    duration: number;
+    type: "video" | "in_person";
+    notes?: string;
+  }): Promise<Appointment> {
+    // Generate token ID
+    const tokenId = `WLK-${Date.now()}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
+    
+    // Check for fee waiver
+    const service = await this.getService(appointment.serviceId);
+    const waiverCheck = await this.checkReturnVisitWaiver(
+      appointment.serviceId, 
+      appointment.patientPhone
+    );
+    
+    const [newAppointment] = await db
+      .insert(appointments)
+      .values({
+        tokenId,
+        userId: null, // Walk-in appointments don't have user IDs
+        providerId: appointment.providerId,
+        serviceId: appointment.serviceId,
+        patientName: appointment.patientName,
+        patientPhone: appointment.patientPhone,
+        patientEmail: appointment.patientEmail,
+        scheduledDate: appointment.scheduledDate,
+        startTime: appointment.startTime,
+        endTime: appointment.endTime,
+        duration: appointment.duration,
+        type: appointment.type,
+        source: "walk-in",
+        status: "confirmed",
+        priority: false,
+        fee: waiverCheck.isWaived ? "0" : service?.price || "0",
+        waived: waiverCheck.isWaived,
+        paymentStatus: "pending",
+        notes: appointment.notes,
+      })
+      .returning();
+    
+    return newAppointment;
   }
 
   async updateAppointmentStatus(id: number, status: string): Promise<Appointment> {
     const [appointment] = await db
       .update(appointments)
-      .set({ status, updatedAt: new Date() })
+      .set({ status: status as any, updatedAt: new Date() })
+      .where(eq(appointments.id, id))
+      .returning();
+    return appointment;
+  }
+
+  async updateAppointmentPriority(id: number, priority: boolean): Promise<Appointment> {
+    const [appointment] = await db
+      .update(appointments)
+      .set({ priority, updatedAt: new Date() })
+      .where(eq(appointments.id, id))
+      .returning();
+    return appointment;
+  }
+
+  async updatePaymentStatus(id: number, status: string, method?: string): Promise<Appointment> {
+    const updateData: any = { 
+      paymentStatus: status as any, 
+      updatedAt: new Date() 
+    };
+    
+    if (method) {
+      updateData.paymentMethod = method as any;
+    }
+    
+    const [appointment] = await db
+      .update(appointments)
+      .set(updateData)
       .where(eq(appointments.id, id))
       .returning();
     return appointment;

@@ -2,7 +2,7 @@
 
 ## Overview
 
-This is a full-stack service booking platform built with React, Express, and PostgreSQL. The application allows users to discover and book appointments with various service providers across different categories like healthcare, legal, education, business consulting, wellness, and technology. Service providers can create profiles, manage their availability, and handle bookings, while clients can search for providers, view profiles, and schedule appointments.
+This is a full-stack service booking platform built with React, Express, and PostgreSQL. The application follows a **provider-first, service-flexible** architecture where each provider can offer multiple services with different pricing, booking rules, and payment options. Users can discover and book appointments with service providers across categories like healthcare, legal, education, business consulting, wellness, and technology. The platform supports both online bookings and walk-in appointment management with advanced features like priority queuing, flexible payment options, return visit waivers, and unique token-based appointment tracking.
 
 ## System Architecture
 
@@ -113,6 +113,11 @@ Changelog:
 - June 26, 2025: Localized platform for Indian market with Indian cities, names, currency (₹), and phone numbers
 - June 26, 2025: Fixed appointment booking calendar with proper date/time formatting and 30-minute slots
 - June 26, 2025: Updated all frontend currency displays from $ to ₹ across provider cards, booking pages, and profiles
+- June 26, 2025: MAJOR ARCHITECTURAL UPGRADE: Transformed to provider-first, service-flexible model
+- June 26, 2025: Added services table with per-service pricing, booking types, payment options, and return visit waivers
+- June 26, 2025: Enhanced appointments table with token IDs, walk-in support, priority queuing, and flexible payment status
+- June 26, 2025: Updated storage layer with comprehensive service and appointment management methods
+- June 26, 2025: Added sample service data for existing providers across healthcare, legal, education, and technology
 ```
 
 ## User Preferences

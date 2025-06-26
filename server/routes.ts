@@ -2,7 +2,7 @@ import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
-import { insertProviderSchema, insertAppointmentSchema, insertAvailabilitySchema, insertReviewSchema } from "@shared/schema";
+import { insertProviderSchema, insertAppointmentSchema, insertAvailabilitySchema, insertReviewSchema, insertServiceSchema } from "@shared/schema";
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -222,6 +222,123 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Service management routes
+  app.get('/api/providers/:providerId/services', async (req, res) => {
+    try {
+      const providerId = parseInt(req.params.providerId);
+      const services = await storage.getProviderServices(providerId);
+      res.json(services);
+    } catch (error) {
+      console.error("Error fetching provider services:", error);
+      res.status(500).json({ message: "Failed to fetch provider services" });
+    }
+  });
+
+  app.post('/api/providers/:providerId/services', isAuthenticated, async (req: any, res) => {
+    try {
+      const providerId = parseInt(req.params.providerId);
+      const userId = req.user.claims.sub;
+      
+      // Verify the provider belongs to the authenticated user
+      const provider = await storage.getProvider(providerId);
+      if (!provider || provider.userId !== userId) {
+        return res.status(403).json({ message: "Not authorized to create services for this provider" });
+      }
+      
+      const serviceData = { ...req.body, providerId };
+      const service = await storage.createService(serviceData);
+      res.json(service);
+    } catch (error) {
+      console.error("Error creating service:", error);
+      res.status(500).json({ message: "Failed to create service" });
+    }
+  });
+
+  app.get('/api/services/:id', async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const service = await storage.getService(id);
+      if (!service) {
+        return res.status(404).json({ message: "Service not found" });
+      }
+      res.json(service);
+    } catch (error) {
+      console.error("Error fetching service:", error);
+      res.status(500).json({ message: "Failed to fetch service" });
+    }
+  });
+
+  app.patch('/api/services/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const userId = req.user.claims.sub;
+      
+      // Get service and verify ownership
+      const service = await storage.getService(id);
+      if (!service) {
+        return res.status(404).json({ message: "Service not found" });
+      }
+      
+      const provider = await storage.getProvider(service.providerId);
+      if (!provider || provider.userId !== userId) {
+        return res.status(403).json({ message: "Not authorized to update this service" });
+      }
+      
+      const updatedService = await storage.updateService(id, req.body);
+      res.json(updatedService);
+    } catch (error) {
+      console.error("Error updating service:", error);
+      res.status(500).json({ message: "Failed to update service" });
+    }
+  });
+
+  app.delete('/api/services/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const userId = req.user.claims.sub;
+      
+      // Get service and verify ownership
+      const service = await storage.getService(id);
+      if (!service) {
+        return res.status(404).json({ message: "Service not found" });
+      }
+      
+      const provider = await storage.getProvider(service.providerId);
+      if (!provider || provider.userId !== userId) {
+        return res.status(403).json({ message: "Not authorized to delete this service" });
+      }
+      
+      await storage.deleteService(id);
+      res.json({ message: "Service deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting service:", error);
+      res.status(500).json({ message: "Failed to delete service" });
+    }
+  });
+
+  // Walk-in appointment routes
+  app.post('/api/appointments/walk-in', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      // Verify user is a provider
+      const provider = await storage.getProviderByUserId(userId);
+      if (!provider) {
+        return res.status(403).json({ message: "Only providers can create walk-in appointments" });
+      }
+      
+      const appointment = await storage.createWalkInAppointment({
+        ...req.body,
+        providerId: provider.id
+      });
+      
+      res.json(appointment);
+    } catch (error) {
+      console.error("Error creating walk-in appointment:", error);
+      res.status(500).json({ message: "Failed to create walk-in appointment" });
+    }
+  });
+
   // Appointment routes
   app.post('/api/appointments', isAuthenticated, async (req: any, res) => {
     try {
@@ -332,6 +449,92 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error updating appointment status:", error);
       res.status(500).json({ message: "Failed to update appointment status" });
+    }
+  });
+
+  // Appointment priority routes
+  app.patch('/api/appointments/:id/priority', isAuthenticated, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const userId = req.user.claims.sub;
+      const { priority } = req.body;
+
+      const appointment = await storage.getAppointment(id);
+      if (!appointment) {
+        return res.status(404).json({ message: "Appointment not found" });
+      }
+
+      // Only providers can set priority
+      const user = await storage.getUser(userId);
+      if (user?.role !== 'provider') {
+        return res.status(403).json({ message: "Only providers can set appointment priority" });
+      }
+
+      const provider = await storage.getProviderByUserId(userId);
+      if (!provider || appointment.providerId !== provider.id) {
+        return res.status(403).json({ message: "Not authorized to modify this appointment" });
+      }
+
+      const updatedAppointment = await storage.updateAppointmentPriority(id, priority);
+      res.json(updatedAppointment);
+    } catch (error) {
+      console.error("Error updating appointment priority:", error);
+      res.status(500).json({ message: "Failed to update appointment priority" });
+    }
+  });
+
+  // Payment status routes
+  app.patch('/api/appointments/:id/payment', isAuthenticated, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const userId = req.user.claims.sub;
+      const { status, method } = req.body;
+
+      const appointment = await storage.getAppointment(id);
+      if (!appointment) {
+        return res.status(404).json({ message: "Appointment not found" });
+      }
+
+      // Check authorization - providers can update any payment for their appointments
+      const user = await storage.getUser(userId);
+      let authorized = false;
+      
+      if (appointment.userId === userId) {
+        authorized = true;
+      } else if (user?.role === 'provider') {
+        const provider = await storage.getProviderByUserId(userId);
+        if (provider && appointment.providerId === provider.id) {
+          authorized = true;
+        }
+      }
+
+      if (!authorized) {
+        return res.status(403).json({ message: "Not authorized to update payment for this appointment" });
+      }
+
+      const updatedAppointment = await storage.updatePaymentStatus(id, status, method);
+      res.json(updatedAppointment);
+    } catch (error) {
+      console.error("Error updating payment status:", error);
+      res.status(500).json({ message: "Failed to update payment status" });
+    }
+  });
+
+  // Return visit waiver check
+  app.get('/api/services/:serviceId/waiver-check', async (req, res) => {
+    try {
+      const serviceId = parseInt(req.params.serviceId);
+      const { patientIdentifier } = req.query;
+
+      if (!patientIdentifier) {
+        return res.status(400).json({ message: "Patient identifier is required" });
+      }
+
+      const waiverCheck = await storage.checkReturnVisitWaiver(serviceId, patientIdentifier as string);
+      res.json(waiverCheck);
+    } catch (error) {
+      console.error("Error checking return visit waiver:", error);
+      res.status(500).json({ message: "Failed to check return visit waiver" });
     }
   });
 
