@@ -38,6 +38,11 @@ export default function ProviderProfile() {
     enabled: !!id,
   });
 
+  const { data: services = [] } = useQuery({
+    queryKey: [`/api/providers/${id}/services`],
+    enabled: !!id,
+  });
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-slate-50">
@@ -68,11 +73,7 @@ export default function ProviderProfile() {
     );
   }
 
-  const handleBookAppointment = () => {
-    if (!isAuthenticated) {
-      window.location.href = "/api/login";
-      return;
-    }
+  const handleViewServices = () => {
     setLocation(`/booking/${provider.id}`);
   };
 
@@ -144,12 +145,11 @@ export default function ProviderProfile() {
               </div>
               
               <div className="text-center">
-                <div className="text-3xl font-bold text-slate-900 mb-1">
-                  ₹{provider.hourlyRate || '0'}
+                <div className="text-lg font-semibold text-slate-900 mb-4">
+                  Service-Based Pricing
                 </div>
-                <div className="text-slate-600 mb-4">per hour</div>
-                <Button onClick={handleBookAppointment} size="lg" className="w-full">
-                  Book Appointment
+                <Button onClick={handleViewServices} size="lg" className="w-full">
+                  View Services & Book
                 </Button>
               </div>
             </div>
@@ -200,26 +200,75 @@ export default function ProviderProfile() {
                   </div>
                 </div>
 
-                <h4 className="font-medium text-slate-900 mb-3">Meeting Options</h4>
-                <div className="space-y-3">
-                  {provider.isVideoCallEnabled && (
-                    <div className="flex items-center space-x-3 p-3 border border-slate-200 rounded-lg">
-                      <Video className="h-5 w-5 text-primary" />
-                      <div>
-                        <div className="font-medium text-slate-900">Video Consultation</div>
-                        <div className="text-sm text-slate-600">Meet virtually from anywhere</div>
-                      </div>
+                {/* Services List */}
+                <div className="mb-6">
+                  <h4 className="font-medium text-slate-900 mb-3">Available Services</h4>
+                  {services.length === 0 ? (
+                    <div className="text-center py-8 text-slate-500">
+                      <Calendar className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                      <p>No services configured yet</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {services.map((service: any) => (
+                        <div key={service.id} className="flex items-center justify-between p-4 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-3 mb-2">
+                              <h5 className="font-medium text-slate-900">{service.name}</h5>
+                              <Badge variant="outline" className="text-xs">
+                                {service.bookingType}
+                              </Badge>
+                            </div>
+                            <p className="text-sm text-slate-600 mb-2">{service.description}</p>
+                            <div className="flex items-center space-x-4 text-xs text-slate-500">
+                              <span className="flex items-center">
+                                <Clock className="h-3 w-3 mr-1" />
+                                {service.duration} min
+                              </span>
+                              {service.returnVisitWaiver && (
+                                <span className="text-green-600">Return visit waiver available</span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="text-right ml-4">
+                            <div className="text-lg font-bold text-slate-900">₹{service.price}</div>
+                            <Button 
+                              size="sm" 
+                              onClick={() => setLocation(`/booking/${provider.id}?service=${service.id}`)}
+                              className="mt-2"
+                            >
+                              Book Now
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   )}
-                  {provider.isInPersonEnabled && (
-                    <div className="flex items-center space-x-3 p-3 border border-slate-200 rounded-lg">
-                      <MapPin className="h-5 w-5 text-primary" />
-                      <div>
-                        <div className="font-medium text-slate-900">In-Person Visit</div>
-                        <div className="text-sm text-slate-600">Visit their office or location</div>
+                </div>
+
+                {/* Meeting Options */}
+                <div>
+                  <h4 className="font-medium text-slate-900 mb-3">Meeting Options</h4>
+                  <div className="grid sm:grid-cols-2 gap-3">
+                    {provider.isVideoCallEnabled && (
+                      <div className="flex items-center space-x-3 p-3 border border-slate-200 rounded-lg">
+                        <Video className="h-5 w-5 text-primary" />
+                        <div>
+                          <div className="font-medium text-slate-900">Video Consultation</div>
+                          <div className="text-sm text-slate-600">Meet virtually from anywhere</div>
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
+                    {provider.isInPersonEnabled && (
+                      <div className="flex items-center space-x-3 p-3 border border-slate-200 rounded-lg">
+                        <MapPin className="h-5 w-5 text-primary" />
+                        <div>
+                          <div className="font-medium text-slate-900">In-Person Visit</div>
+                          <div className="text-sm text-slate-600">Visit their office or location</div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -334,20 +383,20 @@ export default function ProviderProfile() {
               </CardContent>
             </Card>
 
-            {/* Book Appointment CTA */}
+            {/* Services CTA */}
             <Card className="bg-primary text-white">
               <CardContent className="p-6 text-center">
-                <DollarSign className="h-8 w-8 mx-auto mb-4 opacity-80" />
+                <Calendar className="h-8 w-8 mx-auto mb-4 opacity-80" />
                 <h3 className="font-semibold mb-2">Ready to book?</h3>
                 <p className="text-sm opacity-90 mb-4">
-                  Schedule your appointment with {displayName} today
+                  Choose from {services.length || 'various'} services offered by {displayName}
                 </p>
                 <Button 
                   variant="secondary" 
-                  onClick={handleBookAppointment}
+                  onClick={handleViewServices}
                   className="w-full"
                 >
-                  Book Now - ${provider.hourlyRate}/hr
+                  View Services & Book
                 </Button>
               </CardContent>
             </Card>
