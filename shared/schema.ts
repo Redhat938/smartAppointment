@@ -61,6 +61,12 @@ export const providers = pgTable("providers", {
   responseTime: integer("response_time").default(60), // minutes
   completedAppointments: integer("completed_appointments").default(0),
   rebookingRate: decimal("rebooking_rate", { precision: 5, scale: 2 }).default("0"),
+  // Booking settings
+  bookingType: varchar("booking_type", { enum: ["token", "timeslot", "service", "teleconsult"] }).default("timeslot"),
+  dailyCapacity: integer("daily_capacity").default(20),
+  slotDuration: integer("slot_duration").default(30), // minutes
+  bufferTime: integer("buffer_time").default(10), // minutes
+  autoEta: boolean("auto_eta").default(false), // for token flow
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

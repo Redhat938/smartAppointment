@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import Navbar from "@/components/navbar";
 import AppointmentCard from "@/components/appointment-card";
+import BookingSettings from "@/components/booking-settings";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -54,6 +55,18 @@ export default function Dashboard() {
     retry: false,
   });
 
+  // Fetch provider data to determine if user is a provider
+  const { data: provider } = useQuery({
+    queryKey: ["/api/providers/my-profile"],
+    queryFn: async () => {
+      const response = await fetch('/api/providers/my-profile');
+      if (!response.ok) return null;
+      return response.json();
+    },
+    enabled: !!user,
+    retry: false,
+  });
+
   const updateStatusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: number; status: string }) => {
       return await apiRequest("PATCH", `/api/appointments/${id}/status`, { status });
@@ -100,7 +113,7 @@ export default function Dashboard() {
     );
   }
 
-  const isProvider = user?.role === 'provider';
+  const isProvider = !!provider;
   
   // Calculate stats
   const pendingAppointments = appointments.filter((apt: any) => apt.status === 'pending');
@@ -214,11 +227,12 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="upcoming" className="w-full">
-              <TabsList className="grid w-full grid-cols-4">
+              <TabsList className={`grid w-full ${isProvider ? 'grid-cols-5' : 'grid-cols-4'}`}>
                 <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
                 <TabsTrigger value="pending">Pending</TabsTrigger>
                 <TabsTrigger value="completed">Completed</TabsTrigger>
                 <TabsTrigger value="all">All</TabsTrigger>
+                {isProvider && <TabsTrigger value="settings">Settings</TabsTrigger>}
               </TabsList>
 
               <TabsContent value="upcoming" className="mt-6">
@@ -328,6 +342,21 @@ export default function Dashboard() {
                   </div>
                 )}
               </TabsContent>
+
+              {/* Booking Settings Tab - Only for Providers */}
+              {isProvider && (
+                <TabsContent value="settings" className="mt-6">
+                  {provider ? (
+                    <BookingSettings provider={provider} />
+                  ) : (
+                    <div className="text-center py-12">
+                      <Settings className="h-12 w-12 text-slate-400 mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-slate-900 mb-2">Loading Settings</h3>
+                      <p className="text-slate-600">Please wait while we load your provider settings.</p>
+                    </div>
+                  )}
+                </TabsContent>
+              )}
             </Tabs>
           </CardContent>
         </Card>

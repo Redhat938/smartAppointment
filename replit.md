@@ -107,6 +107,9 @@ Changelog:
 - June 26, 2025: Added comprehensive test data including 10 sample providers across all categories
 - June 26, 2025: Fixed SelectItem error in search filters and verified search functionality working
 - June 26, 2025: Updated sample providers to be verified/active, enabling featured providers display
+- June 26, 2025: Enhanced booking system with configurable booking types (token, timeslot, service, teleconsult)
+- June 26, 2025: Added provider booking settings with daily capacity, slot duration, buffer time, and auto-ETA
+- June 26, 2025: Implemented booking settings UI in provider dashboard with validation and API endpoints
 ```
 
 ## User Preferences

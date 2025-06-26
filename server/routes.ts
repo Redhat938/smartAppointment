@@ -138,6 +138,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/providers/my-profile', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const provider = await storage.getProviderByUserId(userId);
+      
+      if (!provider) {
+        return res.status(404).json({ message: "Provider profile not found" });
+      }
+      
+      res.json(provider);
+    } catch (error) {
+      console.error("Error fetching provider profile:", error);
+      res.status(500).json({ message: "Failed to fetch provider profile" });
+    }
+  });
+
+  // Provider booking settings route
+  app.put('/api/providers/:id/booking-settings', isAuthenticated, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const userId = req.user.claims.sub;
+      
+      const provider = await storage.getProvider(id);
+      if (!provider || provider.userId !== userId) {
+        return res.status(403).json({ message: "Not authorized to update this provider" });
+      }
+      
+      const settings = req.body;
+      
+      // Validate booking settings
+      if (settings.dailyCapacity && settings.dailyCapacity < 1) {
+        return res.status(400).json({ message: "Daily capacity must be at least 1" });
+      }
+      if (settings.slotDuration && settings.slotDuration < 5) {
+        return res.status(400).json({ message: "Slot duration must be at least 5 minutes" });
+      }
+      if (settings.bufferTime && settings.bufferTime < 0) {
+        return res.status(400).json({ message: "Buffer time cannot be negative" });
+      }
+      
+      const updatedProvider = await storage.updateProviderBookingSettings(id, settings);
+      res.json(updatedProvider);
+    } catch (error) {
+      console.error("Error updating provider booking settings:", error);
+      res.status(500).json({ message: "Failed to update booking settings" });
+    }
+  });
+
   // Provider availability routes
   app.get('/api/providers/:id/availability', async (req, res) => {
     try {

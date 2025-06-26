@@ -1,0 +1,79 @@
+I want to enhance my appointment‐booking site so that each service provider can:
+
+Choose their booking category (token, timeslot, service, teleconsult).
+
+Configure daily limits (e.g. “max 20 appointments/day” or “only 5 tokens/day”).
+
+Set slot durations (for timeslot/service/teleconsult flows).
+
+Define buffer times between appointments (e.g. 10 min prep time).
+
+Optionally auto‐adjust ETAs (for token flow) based on average actual visit times.
+
+Please update the site as follows:
+
+1. Provider Dashboard → “Booking Settings” Panel
+Booking Type dropdown: token | timeslot | service | teleconsult
+
+Daily Capacity input: integer
+
+Slot Duration (mins): integer (only for timeslot, service, teleconsult)
+
+Buffer Time (mins): integer (applies after each booked slot)
+
+Auto‐ETA Calculation toggle (only for token):
+
+If ON, calculate future ETAs from average past slot durations; if OFF, use fixed estimate.
+
+2. Provider Profile & API Changes
+Add these new fields to the ProviderProfile model:
+
+js
+Copy
+Edit
+booking_type: String,         // enum: token, timeslot, service, teleconsult
+daily_capacity: Number,       // max bookings per day
+slot_duration: Number,        // minutes
+buffer_time: Number,          // minutes
+auto_eta: Boolean             // token‐flow ETA toggle
+Ensure backend validations:
+
+capacity ≥ 1
+
+slot_duration ≥ 5 mins
+
+buffer_time ≥ 0
+
+If booking_type===’token’, slot_duration/buffer_time optional; if booking_type≠’token’, daily_capacity optional or inferred.
+
+3. Booking UI Logic
+Token Flow
+
+Only allow booking until daily_capacity.
+
+Show ETA = current_time + (current_queue * avg_duration + buffer_time).
+
+Timeslot/Service/Teleconsult Flow
+
+Render a timepicker calendar that:
+
+Breaks the workday into slot_duration + buffer_time blocks.
+
+Disables slots once booked count for that block reaches capacity.
+
+All flows must enforce daily_capacity across the day.
+
+4. Notifications & Edge Cases
+Show doctors a warning if they exceed 80% of capacity by midday.
+
+If a provider toggles “Unavailable” mid‐day, automatically notify pending token holders or booked users.
+
+Deliverables:
+
+Updated provider dashboard UI with new “Booking Settings.”
+
+Backend model + route updates for storing and validating settings.
+
+Frontend logic in booking pages to read those settings and enforce capacity, durations, buffers, and ETA calculations.
+
+Basic styling to keep these settings seamless in the existing design.

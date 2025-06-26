@@ -29,6 +29,13 @@ export interface IStorage {
   getProvider(id: number): Promise<Provider | undefined>;
   getProviderByUserId(userId: string): Promise<Provider | undefined>;
   updateProvider(id: number, updates: Partial<InsertProvider>): Promise<Provider>;
+  updateProviderBookingSettings(providerId: number, settings: {
+    bookingType?: "token" | "timeslot" | "service" | "teleconsult";
+    dailyCapacity?: number;
+    slotDuration?: number;
+    bufferTime?: number;
+    autoEta?: boolean;
+  }): Promise<Provider>;
   searchProviders(filters: {
     category?: string;
     location?: string;
@@ -103,6 +110,21 @@ export class DatabaseStorage implements IStorage {
       .update(providers)
       .set({ ...updates, updatedAt: new Date() })
       .where(eq(providers.id, id))
+      .returning();
+    return provider;
+  }
+
+  async updateProviderBookingSettings(providerId: number, settings: {
+    bookingType?: "token" | "timeslot" | "service" | "teleconsult";
+    dailyCapacity?: number;
+    slotDuration?: number;
+    bufferTime?: number;
+    autoEta?: boolean;
+  }): Promise<Provider> {
+    const [provider] = await db
+      .update(providers)
+      .set({ ...settings, updatedAt: new Date() })
+      .where(eq(providers.id, providerId))
       .returning();
     return provider;
   }
