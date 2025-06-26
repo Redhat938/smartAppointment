@@ -22,7 +22,7 @@ export default function Search() {
   const [inPerson, setInPerson] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
 
-  const { data: categories = [] } = useQuery({
+  const { data: categories = [] } = useQuery<any[]>({
     queryKey: ["/api/categories"],
   });
 
@@ -80,7 +80,7 @@ export default function Search() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Categories</SelectItem>
-                    {categories.map((category: any) => (
+                    {(categories as any[]).map((category: any) => (
                       <SelectItem key={category.id} value={category.id}>
                         {category.name}
                       </SelectItem>
@@ -140,7 +140,7 @@ export default function Search() {
                         <Checkbox 
                           id="video" 
                           checked={videoCall}
-                          onCheckedChange={setVideoCall}
+                          onCheckedChange={(checked) => setVideoCall(checked === true)}
                         />
                         <label htmlFor="video" className="text-sm text-slate-600">
                           Video Call Available
@@ -150,7 +150,7 @@ export default function Search() {
                         <Checkbox 
                           id="inperson" 
                           checked={inPerson}
-                          onCheckedChange={setInPerson}
+                          onCheckedChange={(checked) => setInPerson(checked === true)}
                         />
                         <label htmlFor="inperson" className="text-sm text-slate-600">
                           In-Person Available
@@ -175,7 +175,7 @@ export default function Search() {
           <p className="text-slate-600">
             {providers.length} provider{providers.length !== 1 ? 's' : ''} found
             {searchLocation && ` in ${searchLocation}`}
-            {searchCategory && ` for ${categories.find((c: any) => c.id === searchCategory)?.name}`}
+            {searchCategory && ` for ${(categories as any[]).find((c: any) => c.id === searchCategory)?.name}`}
           </p>
           
           {(searchCategory || searchLocation || minRating || videoCall || inPerson) && (
@@ -183,7 +183,7 @@ export default function Search() {
               <span className="text-sm text-slate-600">Filters:</span>
               {searchCategory && (
                 <Badge variant="secondary">
-                  {categories.find((c: any) => c.id === searchCategory)?.name}
+                  {(categories as any[]).find((c: any) => c.id === searchCategory)?.name}
                 </Badge>
               )}
               {searchLocation && (
