@@ -118,6 +118,8 @@ Changelog:
 - June 26, 2025: Enhanced appointments table with token IDs, walk-in support, priority queuing, and flexible payment status
 - June 26, 2025: Updated storage layer with comprehensive service and appointment management methods
 - June 26, 2025: Added sample service data for existing providers across healthcare, legal, education, and technology
+- June 26, 2025: Fixed service management issues - corrected React Query keys and API routing for provider services
+- June 26, 2025: Removed hourly rate field from provider registration (pricing now service-specific, not provider-level)
 ```
 
 ## User Preferences

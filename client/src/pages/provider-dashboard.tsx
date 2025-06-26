@@ -73,7 +73,7 @@ export default function ProviderDashboard() {
 
   // Fetch provider services
   const { data: services = [] } = useQuery({
-    queryKey: ["/api/providers", provider?.id, "services"],
+    queryKey: [`/api/providers/${provider?.id}/services`],
     enabled: !!provider?.id,
     retry: false,
   });

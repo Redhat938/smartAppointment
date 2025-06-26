@@ -39,7 +39,7 @@ const providerFormSchema = z.object({
   address: z.string().optional(),
   phone: z.string().optional(),
   website: z.string().optional(),
-  hourlyRate: z.string().min(1, "Hourly rate is required").transform((val) => val),
+
   experience: z.string().transform(Number).optional(),
   isVideoCallEnabled: z.boolean().default(true),
   isInPersonEnabled: z.boolean().default(true),
@@ -118,7 +118,6 @@ export default function ProviderSetup() {
       address: "",
       phone: "",
       website: "",
-      hourlyRate: "",
       experience: "",
       isVideoCallEnabled: true,
       isInPersonEnabled: true,
@@ -137,7 +136,7 @@ export default function ProviderSetup() {
         address: provider.address || "",
         phone: provider.phone || "",
         website: provider.website || "",
-        hourlyRate: provider.hourlyRate?.toString() || "",
+
         experience: provider.experience?.toString() || "",
         isVideoCallEnabled: provider.isVideoCallEnabled ?? true,
         isInPersonEnabled: provider.isInPersonEnabled ?? true,
@@ -511,20 +510,7 @@ export default function ProviderSetup() {
                       )}
                     </div>
 
-                    <div>
-                      <Label htmlFor="hourlyRate">Hourly Rate (₹ INR) *</Label>
-                      <Input
-                        id="hourlyRate"
-                        type="number"
-                        placeholder="1500"
-                        {...form.register("hourlyRate")}
-                      />
-                      {form.formState.errors.hourlyRate && (
-                        <p className="text-sm text-red-600 mt-1">
-                          {form.formState.errors.hourlyRate.message}
-                        </p>
-                      )}
-                    </div>
+
 
                     <div>
                       <Label htmlFor="experience">Years of Experience</Label>
