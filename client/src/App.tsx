@@ -10,7 +10,7 @@ import Home from "@/pages/home";
 import Search from "@/pages/search";
 import ProviderProfile from "@/pages/provider-profile";
 import Booking from "@/pages/booking";
-import Dashboard from "@/pages/dashboard";
+import SmartDashboard from "@/pages/smart-dashboard";
 import ProviderSetup from "@/pages/provider-setup";
 import ProviderServices from "@/pages/provider-services";
 
@@ -31,7 +31,7 @@ function Router() {
           <Route path="/search" component={Search} />
           <Route path="/provider/:id" component={ProviderProfile} />
           <Route path="/booking/:providerId" component={Booking} />
-          <Route path="/dashboard" component={Dashboard} />
+          <Route path="/dashboard" component={SmartDashboard} />
           <Route path="/provider-setup" component={ProviderSetup} />
           <Route path="/provider-services" component={ProviderServices} />
         </>
