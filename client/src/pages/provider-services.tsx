@@ -89,7 +89,7 @@ export default function ProviderServices() {
 
   // Get provider services
   const { data: services, isLoading } = useQuery({
-    queryKey: ['/api/providers', user?.provider?.id, 'services'],
+    queryKey: [`/api/providers/${user?.provider?.id}/services`],
     enabled: !!user?.provider?.id,
   });
 
@@ -126,7 +126,7 @@ export default function ProviderServices() {
       return await apiRequest("POST", `/api/providers/${user?.provider?.id}/services`, serviceData);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/providers', user?.provider?.id, 'services'] });
+      queryClient.invalidateQueries({ queryKey: [`/api/providers/${user?.provider?.id}/services`] });
       setIsDialogOpen(false);
       setEditingService(null);
       form.reset();
@@ -155,7 +155,7 @@ export default function ProviderServices() {
       return await apiRequest("PATCH", `/api/services/${editingService.id}`, serviceData);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/providers', user?.provider?.id, 'services'] });
+      queryClient.invalidateQueries({ queryKey: [`/api/providers/${user?.provider?.id}/services`] });
       setIsDialogOpen(false);
       setEditingService(null);
       form.reset();
@@ -178,7 +178,7 @@ export default function ProviderServices() {
       return await apiRequest("DELETE", `/api/services/${serviceId}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/providers', user?.provider?.id, 'services'] });
+      queryClient.invalidateQueries({ queryKey: [`/api/providers/${user?.provider?.id}/services`] });
       toast({
         title: "Success",
         description: "Service deleted successfully",
