@@ -50,7 +50,7 @@ export const providers = pgTable("providers", {
   phone: varchar("phone"),
   website: varchar("website"),
   hourlyRate: decimal("hourly_rate", { precision: 10, scale: 2 }),
-  currency: varchar("currency").default("USD"),
+  currency: varchar("currency").default("INR"),
   experience: integer("experience"), // years
   isVideoCallEnabled: boolean("is_video_call_enabled").default(true),
   isInPersonEnabled: boolean("is_in_person_enabled").default(true),
@@ -242,6 +242,14 @@ export const insertProviderSchema = createInsertSchema(providers).omit({
   totalReviews: true,
   completedAppointments: true,
   rebookingRate: true,
+}).extend({
+  // Transform string inputs to proper types
+  hourlyRate: z.union([z.string(), z.number()]).transform((val) => 
+    typeof val === 'string' ? val : val.toString()
+  ),
+  experience: z.union([z.string(), z.number()]).transform((val) => 
+    typeof val === 'string' ? parseInt(val) || 0 : val
+  ).optional(),
 });
 
 export const insertServiceSchema = createInsertSchema(services).omit({

@@ -37,7 +37,7 @@ const providerFormSchema = z.object({
   address: z.string().optional(),
   phone: z.string().optional(),
   website: z.string().optional(),
-  hourlyRate: z.string().min(1, "Hourly rate is required"),
+  hourlyRate: z.string().min(1, "Hourly rate is required").transform((val) => val),
   experience: z.string().transform(Number).optional(),
   isVideoCallEnabled: z.boolean().default(true),
   isInPersonEnabled: z.boolean().default(true),
@@ -148,11 +148,7 @@ export default function ProviderSetup() {
 
   const createProviderMutation = useMutation({
     mutationFn: async (data: ProviderForm) => {
-      return await apiRequest("POST", "/api/providers", {
-        ...data,
-        hourlyRate: parseFloat(data.hourlyRate),
-        experience: data.experience ? parseInt(data.experience as any) : undefined,
-      });
+      return await apiRequest("POST", "/api/providers", data);
     },
     onSuccess: () => {
       toast({
@@ -184,11 +180,7 @@ export default function ProviderSetup() {
 
   const updateProviderMutation = useMutation({
     mutationFn: async (data: ProviderForm) => {
-      return await apiRequest("PUT", `/api/providers/${provider.id}`, {
-        ...data,
-        hourlyRate: parseFloat(data.hourlyRate),
-        experience: data.experience ? parseInt(data.experience as any) : undefined,
-      });
+      return await apiRequest("PUT", `/api/providers/${provider.id}`, data);
     },
     onSuccess: () => {
       toast({
@@ -430,11 +422,11 @@ export default function ProviderSetup() {
                     </div>
 
                     <div>
-                      <Label htmlFor="hourlyRate">Hourly Rate (USD) *</Label>
+                      <Label htmlFor="hourlyRate">Hourly Rate (₹ INR) *</Label>
                       <Input
                         id="hourlyRate"
                         type="number"
-                        placeholder="150"
+                        placeholder="1500"
                         {...form.register("hourlyRate")}
                       />
                       {form.formState.errors.hourlyRate && (
