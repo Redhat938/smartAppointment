@@ -26,7 +26,7 @@ import {
 import { isUnauthorizedError } from "@/lib/authUtils";
 
 export default function Booking() {
-  const { providerId } = useParams();
+  const { providerId, serviceId } = useParams();
   const [, setLocation] = useLocation();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -37,11 +37,18 @@ export default function Booking() {
   const [appointmentType, setAppointmentType] = useState<"video" | "in_person">("video");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [duration, setDuration] = useState("60");
+  const [selectedServiceId, setSelectedServiceId] = useState<string>(serviceId || "");
 
   const { data: provider, isLoading: providerLoading } = useQuery({
     queryKey: [`/api/providers/${providerId}`],
   });
+
+  const { data: services = [], isLoading: servicesLoading } = useQuery({
+    queryKey: [`/api/providers/${providerId}/services`],
+    enabled: !!providerId,
+  });
+
+  const selectedService = selectedServiceId ? services.find((s: any) => s.id === parseInt(selectedServiceId)) : null;
 
   const bookingMutation = useMutation({
     mutationFn: async (bookingData: any) => {
@@ -106,10 +113,19 @@ export default function Booking() {
   }
 
   const handleBooking = () => {
-    if (!selectedDate || !selectedTime || !title) {
+    if (!selectedDate || !selectedTime || !title || !selectedServiceId) {
       toast({
         title: "Missing Information",
-        description: "Please fill in all required fields.",
+        description: "Please fill in all required fields and select a service.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!selectedService) {
+      toast({
+        title: "Service Required",
+        description: "Please select a service to book.",
         variant: "destructive",
       });
       return;
@@ -117,7 +133,7 @@ export default function Booking() {
 
     const scheduledDate = new Date(`${selectedDate}T00:00:00`);
     const startTime = selectedTime;
-    const durationMinutes = parseInt(duration);
+    const durationMinutes = selectedService.duration;
     const [hours, minutes] = selectedTime.split(':').map(Number);
     const endTimeHours = Math.floor((hours * 60 + minutes + durationMinutes) / 60);
     const endTimeMinutes = (hours * 60 + minutes + durationMinutes) % 60;
@@ -125,6 +141,7 @@ export default function Booking() {
 
     const bookingData = {
       providerId: parseInt(providerId!),
+      serviceId: parseInt(selectedServiceId),
       title,
       description,
       scheduledDate: scheduledDate.toISOString(),
@@ -132,8 +149,8 @@ export default function Booking() {
       endTime,
       duration: durationMinutes,
       type: appointmentType,
-      amount: parseFloat(provider.hourlyRate || "0"),
-      currency: provider.currency || "₹",
+      amount: parseFloat(selectedService.price || "0"),
+      currency: "₹",
     };
 
     bookingMutation.mutate(bookingData);
@@ -183,12 +200,57 @@ export default function Booking() {
                           {provider.rating || '0.0'} ({provider.totalReviews || 0} reviews)
                         </span>
                       </div>
-                      <span className="text-lg font-bold text-slate-900">
-                        ₹{provider.hourlyRate}/hr
-                      </span>
+                      {selectedService && (
+                        <span className="text-lg font-bold text-slate-900">
+                          ₹{selectedService.price}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* Service Selection */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Select Service</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {servicesLoading ? (
+                  <div className="space-y-2">
+                    <div className="h-4 bg-slate-200 rounded animate-pulse"></div>
+                    <div className="h-4 bg-slate-200 rounded animate-pulse w-3/4"></div>
+                  </div>
+                ) : services.length === 0 ? (
+                  <p className="text-slate-600">No services available from this provider.</p>
+                ) : (
+                  <RadioGroup value={selectedServiceId} onValueChange={setSelectedServiceId}>
+                    {services.map((service: any) => (
+                      <div key={service.id} className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-slate-50">
+                        <RadioGroupItem value={service.id.toString()} id={`service-${service.id}`} />
+                        <Label htmlFor={`service-${service.id}`} className="flex-1 cursor-pointer">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <h4 className="font-medium">{service.name}</h4>
+                              <p className="text-sm text-slate-600">{service.description}</p>
+                              <div className="flex items-center space-x-4 mt-1">
+                                <span className="text-sm text-slate-500">
+                                  <Clock className="h-3 w-3 inline mr-1" />
+                                  {service.duration} min
+                                </span>
+                                <Badge variant="secondary" className="text-xs">
+                                  {service.bookingType}
+                                </Badge>
+                              </div>
+                            </div>
+                            <span className="font-bold text-lg">₹{service.price}</span>
+                          </div>
+                        </Label>
+                      </div>
+                    ))}
+                  </RadioGroup>
+                )}
               </CardContent>
             </Card>
 
@@ -221,23 +283,18 @@ export default function Booking() {
                   />
                 </div>
 
-                <div>
-                  <Label>Duration</Label>
-                  <RadioGroup value={duration} onValueChange={setDuration} className="mt-2">
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="30" id="30min" />
-                      <Label htmlFor="30min">30 minutes</Label>
+                {selectedService && (
+                  <div>
+                    <Label>Service Duration</Label>
+                    <div className="flex items-center space-x-2 mt-2 p-3 bg-slate-50 rounded-lg">
+                      <Clock className="h-4 w-4 text-slate-500" />
+                      <span className="text-slate-900 font-medium">{selectedService.duration} minutes</span>
+                      <Badge variant="secondary" className="text-xs">
+                        {selectedService.bookingType}
+                      </Badge>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="60" id="60min" />
-                      <Label htmlFor="60min">60 minutes</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="90" id="90min" />
-                      <Label htmlFor="90min">90 minutes</Label>
-                    </div>
-                  </RadioGroup>
-                </div>
+                  </div>
+                )}
 
                 <div>
                   <Label>Meeting Type</Label>
@@ -310,7 +367,9 @@ export default function Booking() {
                       <div className="font-medium text-slate-900">
                         {selectedTime || "Select time"}
                       </div>
-                      <div className="text-sm text-slate-600">{duration} minutes</div>
+                      <div className="text-sm text-slate-600">
+                        {selectedService ? `${selectedService.duration} minutes` : "Select service"}
+                      </div>
                     </div>
                   </div>
 
@@ -329,26 +388,28 @@ export default function Booking() {
                   </div>
                 </div>
 
-                <div className="border-t pt-4">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-slate-600">Duration:</span>
-                    <span className="font-medium">{duration} minutes</span>
+                {selectedService && (
+                  <div className="border-t pt-4">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-slate-600">Service:</span>
+                      <span className="font-medium">{selectedService.name}</span>
+                    </div>
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-slate-600">Duration:</span>
+                      <span className="font-medium">{selectedService.duration} minutes</span>
+                    </div>
+                    <div className="flex justify-between items-center text-lg font-bold border-t pt-2">
+                      <span>Total:</span>
+                      <span className="flex items-center">
+                        ₹{selectedService.price}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-slate-600">Rate:</span>
-                    <span className="font-medium">₹{provider.hourlyRate}/hour</span>
-                  </div>
-                  <div className="flex justify-between items-center text-lg font-bold border-t pt-2">
-                    <span>Total:</span>
-                    <span className="flex items-center">
-                      ₹{((parseFloat(provider.hourlyRate || "0") * parseInt(duration)) / 60).toFixed(2)}
-                    </span>
-                  </div>
-                </div>
+                )}
 
                 <Button 
                   onClick={handleBooking}
-                  disabled={!selectedDate || !selectedTime || !title || bookingMutation.isPending}
+                  disabled={!selectedDate || !selectedTime || !title || !selectedService || bookingMutation.isPending}
                   className="w-full"
                   size="lg"
                 >
