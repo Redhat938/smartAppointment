@@ -24,7 +24,9 @@ import {
   Save,
   ArrowLeft,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  Plus,
+  X
 } from "lucide-react";
 import { isUnauthorizedError } from "@/lib/authUtils";
 
@@ -52,6 +54,12 @@ const availabilitySchema = z.object({
 
 type ProviderForm = z.infer<typeof providerFormSchema>;
 type AvailabilitySlot = z.infer<typeof availabilitySchema>;
+
+interface DaySchedule {
+  dayOfWeek: number;
+  isAvailable: boolean;
+  timeSlots: { startTime: string; endTime: string; }[];
+}
 
 export default function ProviderSetup() {
   const { user, isLoading } = useAuth();
@@ -209,19 +217,42 @@ export default function ProviderSetup() {
     },
   });
 
-  // Availability state
-  const [weeklySchedule, setWeeklySchedule] = useState<AvailabilitySlot[]>([]);
+  // Enhanced availability state with multiple time slots per day
+  const [weeklySchedule, setWeeklySchedule] = useState<DaySchedule[]>([]);
 
   useEffect(() => {
     if (availability.length > 0) {
-      setWeeklySchedule(availability);
+      // Group availability records by day
+      const groupedByDay = availability.reduce((acc: any, slot: any) => {
+        if (!acc[slot.dayOfWeek]) {
+          acc[slot.dayOfWeek] = {
+            dayOfWeek: slot.dayOfWeek,
+            isAvailable: true,
+            timeSlots: []
+          };
+        }
+        acc[slot.dayOfWeek].timeSlots.push({
+          startTime: slot.startTime,
+          endTime: slot.endTime
+        });
+        return acc;
+      }, {});
+
+      // Create schedule array for all 7 days
+      const schedule = Array.from({ length: 7 }, (_, dayOfWeek) => {
+        return groupedByDay[dayOfWeek] || {
+          dayOfWeek,
+          isAvailable: false,
+          timeSlots: [{ startTime: "09:00", endTime: "17:00" }]
+        };
+      });
+      setWeeklySchedule(schedule);
     } else {
       // Initialize default schedule
       const defaultSchedule = Array.from({ length: 7 }, (_, dayOfWeek) => ({
         dayOfWeek,
-        startTime: "09:00",
-        endTime: "17:00",
         isAvailable: dayOfWeek >= 1 && dayOfWeek <= 5, // Monday to Friday
+        timeSlots: [{ startTime: "09:00", endTime: "17:00" }]
       }));
       setWeeklySchedule(defaultSchedule);
     }
@@ -275,15 +306,74 @@ export default function ProviderSetup() {
       });
       return;
     }
-    updateAvailabilityMutation.mutate(weeklySchedule);
+    
+    // Convert DaySchedule format to flat AvailabilitySlot format
+    const availabilitySlots: AvailabilitySlot[] = [];
+    weeklySchedule.forEach(day => {
+      if (day.isAvailable) {
+        day.timeSlots.forEach(slot => {
+          availabilitySlots.push({
+            dayOfWeek: day.dayOfWeek,
+            startTime: slot.startTime,
+            endTime: slot.endTime,
+            isAvailable: true
+          });
+        });
+      }
+    });
+    
+    updateAvailabilityMutation.mutate(availabilitySlots);
   };
 
-  const updateScheduleSlot = (dayOfWeek: number, field: keyof AvailabilitySlot, value: any) => {
+  const updateDayAvailability = (dayOfWeek: number, isAvailable: boolean) => {
     setWeeklySchedule(prev => 
-      prev.map(slot => 
-        slot.dayOfWeek === dayOfWeek 
-          ? { ...slot, [field]: value }
-          : slot
+      prev.map(day => 
+        day.dayOfWeek === dayOfWeek 
+          ? { ...day, isAvailable }
+          : day
+      )
+    );
+  };
+
+  const updateTimeSlot = (dayOfWeek: number, slotIndex: number, field: 'startTime' | 'endTime', value: string) => {
+    setWeeklySchedule(prev => 
+      prev.map(day => 
+        day.dayOfWeek === dayOfWeek 
+          ? {
+              ...day,
+              timeSlots: day.timeSlots.map((slot, index) => 
+                index === slotIndex 
+                  ? { ...slot, [field]: value }
+                  : slot
+              )
+            }
+          : day
+      )
+    );
+  };
+
+  const addTimeSlot = (dayOfWeek: number) => {
+    setWeeklySchedule(prev => 
+      prev.map(day => 
+        day.dayOfWeek === dayOfWeek 
+          ? {
+              ...day,
+              timeSlots: [...day.timeSlots, { startTime: "09:00", endTime: "17:00" }]
+            }
+          : day
+      )
+    );
+  };
+
+  const removeTimeSlot = (dayOfWeek: number, slotIndex: number) => {
+    setWeeklySchedule(prev => 
+      prev.map(day => 
+        day.dayOfWeek === dayOfWeek 
+          ? {
+              ...day,
+              timeSlots: day.timeSlots.filter((_, index) => index !== slotIndex)
+            }
+          : day
       )
     );
   };
@@ -539,53 +629,91 @@ export default function ProviderSetup() {
                   <Clock className="h-5 w-5 mr-2" />
                   Weekly Availability
                 </CardTitle>
+                <p className="text-sm text-slate-600">
+                  Set your working hours for each day. You can add multiple time slots per day to accommodate breaks 
+                  (e.g., 9:00 AM - 12:00 PM and 1:00 PM - 5:00 PM for a lunch break).
+                </p>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {weeklySchedule.map((slot) => (
-                    <div key={slot.dayOfWeek} className="flex items-center space-x-4 p-4 border border-slate-200 rounded-lg">
-                      <div className="flex items-center space-x-2 w-32">
-                        <Checkbox
-                          id={`day-${slot.dayOfWeek}`}
-                          checked={slot.isAvailable}
-                          onCheckedChange={(checked) => 
-                            updateScheduleSlot(slot.dayOfWeek, "isAvailable", checked as boolean)
-                          }
-                        />
-                        <Label htmlFor={`day-${slot.dayOfWeek}`} className="font-medium cursor-pointer">
-                          {dayNames[slot.dayOfWeek]}
-                        </Label>
+                <div className="space-y-6">
+                  {weeklySchedule.map((day) => (
+                    <div key={day.dayOfWeek} className="border border-slate-200 rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center space-x-3">
+                          <Checkbox
+                            id={`day-${day.dayOfWeek}`}
+                            checked={day.isAvailable}
+                            onCheckedChange={(checked) => 
+                              updateDayAvailability(day.dayOfWeek, checked as boolean)
+                            }
+                          />
+                          <Label htmlFor={`day-${day.dayOfWeek}`} className="font-medium cursor-pointer text-lg">
+                            {dayNames[day.dayOfWeek]}
+                          </Label>
+                        </div>
+                        
+                        {day.isAvailable && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => addTimeSlot(day.dayOfWeek)}
+                          >
+                            <Plus className="h-4 w-4 mr-1" />
+                            Add Time Slot
+                          </Button>
+                        )}
                       </div>
                       
-                      {slot.isAvailable && (
-                        <>
-                          <div className="flex items-center space-x-2">
-                            <Label className="text-sm">From:</Label>
-                            <Input
-                              type="time"
-                              value={slot.startTime}
-                              onChange={(e) => 
-                                updateScheduleSlot(slot.dayOfWeek, "startTime", e.target.value)
-                              }
-                              className="w-32"
-                            />
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <Label className="text-sm">To:</Label>
-                            <Input
-                              type="time"
-                              value={slot.endTime}
-                              onChange={(e) => 
-                                updateScheduleSlot(slot.dayOfWeek, "endTime", e.target.value)
-                              }
-                              className="w-32"
-                            />
-                          </div>
-                        </>
-                      )}
-                      
-                      {!slot.isAvailable && (
-                        <span className="text-slate-500 italic">Unavailable</span>
+                      {day.isAvailable ? (
+                        <div className="space-y-3 pl-6">
+                          {day.timeSlots.map((slot, index) => (
+                            <div key={index} className="flex items-center space-x-3 p-3 bg-slate-50 rounded-lg">
+                              <div className="flex items-center space-x-2">
+                                <Label className="text-sm font-medium">From:</Label>
+                                <Input
+                                  type="time"
+                                  value={slot.startTime}
+                                  onChange={(e) => 
+                                    updateTimeSlot(day.dayOfWeek, index, "startTime", e.target.value)
+                                  }
+                                  className="w-32"
+                                />
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <Label className="text-sm font-medium">To:</Label>
+                                <Input
+                                  type="time"
+                                  value={slot.endTime}
+                                  onChange={(e) => 
+                                    updateTimeSlot(day.dayOfWeek, index, "endTime", e.target.value)
+                                  }
+                                  className="w-32"
+                                />
+                              </div>
+                              {day.timeSlots.length > 1 && (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => removeTimeSlot(day.dayOfWeek, index)}
+                                  className="ml-auto text-red-600 hover:text-red-700 hover:bg-red-50"
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </div>
+                          ))}
+                          {day.timeSlots.length === 0 && (
+                            <div className="text-slate-500 italic text-sm pl-3">
+                              Click "Add Time Slot" to set your working hours
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="pl-6 text-slate-500 italic">
+                          Unavailable
+                        </div>
                       )}
                     </div>
                   ))}
