@@ -15,7 +15,7 @@ export default function Search() {
   const [location] = useLocation();
   const urlParams = new URLSearchParams(window.location.search);
   
-  const [searchCategory, setSearchCategory] = useState(urlParams.get("category") || "");
+  const [searchCategory, setSearchCategory] = useState(urlParams.get("category") || "all");
   const [searchLocation, setSearchLocation] = useState(urlParams.get("location") || "");
   const [minRating, setMinRating] = useState("");
   const [videoCall, setVideoCall] = useState(false);
@@ -36,7 +36,7 @@ export default function Search() {
     }],
     queryFn: async () => {
       const params = new URLSearchParams();
-      if (searchCategory) params.set("category", searchCategory);
+      if (searchCategory && searchCategory !== "all") params.set("category", searchCategory);
       if (searchLocation) params.set("location", searchLocation);
       if (minRating) params.set("minRating", minRating);
       if (videoCall) params.set("videoCall", "true");
@@ -54,7 +54,7 @@ export default function Search() {
   };
 
   const clearFilters = () => {
-    setSearchCategory("");
+    setSearchCategory("all");
     setSearchLocation("");
     setMinRating("");
     setVideoCall(false);
@@ -79,7 +79,7 @@ export default function Search() {
                     <SelectValue placeholder="Select category..." />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Categories</SelectItem>
+                    <SelectItem value="all">All Categories</SelectItem>
                     {categories.map((category: any) => (
                       <SelectItem key={category.id} value={category.id}>
                         {category.name}
