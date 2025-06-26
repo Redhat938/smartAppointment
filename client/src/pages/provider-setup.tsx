@@ -544,14 +544,15 @@ export default function ProviderSetup() {
                 <div className="space-y-4">
                   {weeklySchedule.map((slot) => (
                     <div key={slot.dayOfWeek} className="flex items-center space-x-4 p-4 border border-slate-200 rounded-lg">
-                      <div className="w-24">
+                      <div className="flex items-center space-x-2 w-32">
                         <Checkbox
+                          id={`day-${slot.dayOfWeek}`}
                           checked={slot.isAvailable}
                           onCheckedChange={(checked) => 
                             updateScheduleSlot(slot.dayOfWeek, "isAvailable", checked as boolean)
                           }
                         />
-                        <Label className="ml-2 font-medium">
+                        <Label htmlFor={`day-${slot.dayOfWeek}`} className="font-medium cursor-pointer">
                           {dayNames[slot.dayOfWeek]}
                         </Label>
                       </div>
