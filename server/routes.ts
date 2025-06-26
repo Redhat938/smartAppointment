@@ -284,6 +284,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const id = parseInt(req.params.id);
       const userId = req.user.claims.sub;
       
+      // Check if the service exists and belongs to the user's provider
+      const service = await storage.getService(id);
+      if (!service) {
+        return res.status(404).json({ message: "Service not found" });
+      }
+      
+      const provider = await storage.getProvider(service.providerId);
+      if (!provider || provider.userId !== userId) {
+        return res.status(403).json({ message: "Not authorized to update this service" });
+      }
+      
+      const updates = req.body;
+      const updatedService = await storage.updateService(id, updates);
+      res.json(updatedService);
+    } catch (error) {
+      console.error("Error updating service:", error);
+      res.status(500).json({ message: "Failed to update service" });
+    }
+  });
+
+  app.delete('/api/services/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const userId = req.user.claims.sub;
+      
+      // Check if the service exists and belongs to the user's provider
+      const service = await storage.getService(id);
+      if (!service) {
+        return res.status(404).json({ message: "Service not found" });
+      }
+      
+      const provider = await storage.getProvider(service.providerId);
+      if (!provider || provider.userId !== userId) {
+        return res.status(403).json({ message: "Not authorized to delete this service" });
+      }
+      
+      await storage.deleteService(id);
+      res.json({ message: "Service deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting service:", error);
+      res.status(500).json({ message: "Failed to delete service" });
+    }
+  });
+
+  app.patch('/api/services/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const userId = req.user.claims.sub;
+      
       // Get service and verify ownership
       const service = await storage.getService(id);
       if (!service) {

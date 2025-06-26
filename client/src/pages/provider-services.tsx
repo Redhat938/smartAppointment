@@ -123,10 +123,7 @@ export default function ProviderServices() {
         workingHours: JSON.stringify(data.workingHours),
         availableDays: JSON.stringify(data.availableDays),
       };
-      return await apiRequest(`/api/providers/${user?.provider?.id}/services`, {
-        method: "POST",
-        body: JSON.stringify(serviceData),
-      });
+      return await apiRequest("POST", `/api/providers/${user?.provider?.id}/services`, serviceData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/providers', user?.provider?.id, 'services'] });
@@ -155,10 +152,7 @@ export default function ProviderServices() {
         workingHours: JSON.stringify(data.workingHours),
         availableDays: JSON.stringify(data.availableDays),
       };
-      return await apiRequest(`/api/services/${editingService.id}`, {
-        method: "PATCH",
-        body: JSON.stringify(serviceData),
-      });
+      return await apiRequest("PATCH", `/api/services/${editingService.id}`, serviceData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/providers', user?.provider?.id, 'services'] });
@@ -181,9 +175,7 @@ export default function ProviderServices() {
 
   const deleteMutation = useMutation({
     mutationFn: async (serviceId: number) => {
-      return await apiRequest(`/api/services/${serviceId}`, {
-        method: "DELETE",
-      });
+      return await apiRequest("DELETE", `/api/services/${serviceId}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/providers', user?.provider?.id, 'services'] });
