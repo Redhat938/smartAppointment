@@ -1,11 +1,20 @@
 import { useParams, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
+import { useState } from "react";
 import Navbar from "@/components/navbar";
+import AvailabilityCalendar from "@/components/availability-calendar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useQuery } from "@tanstack/react-query";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
+import { isUnauthorizedError } from "@/lib/authUtils";
 import { 
   Star, 
   MapPin, 
@@ -16,13 +25,66 @@ import {
   Calendar,
   DollarSign,
   MessageCircle,
-  Award
+  Award,
+  X
 } from "lucide-react";
 
 export default function ProviderProfile() {
   const { id } = useParams();
   const [, setLocation] = useLocation();
   const { isAuthenticated } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  // Booking state
+  const [showBookingForm, setShowBookingForm] = useState(false);
+  const [selectedDate, setSelectedDate] = useState("");
+  const [selectedTime, setSelectedTime] = useState("");
+  const [selectedServiceId, setSelectedServiceId] = useState("");
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [appointmentType, setAppointmentType] = useState<"video" | "in_person">("video");
+
+  // Booking mutation
+  const bookingMutation = useMutation({
+    mutationFn: async (bookingData: any) => {
+      return await apiRequest("POST", "/api/appointments", bookingData);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Appointment Booked!",
+        description: "Your appointment has been successfully scheduled.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/appointments"] });
+      // Reset form and hide booking
+      setShowBookingForm(false);
+      setSelectedDate("");
+      setSelectedTime("");
+      setSelectedServiceId("");
+      setTitle("");
+      setDescription("");
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Booking Failed",
+        description: error.message || "Failed to book appointment. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+
 
   const { data: provider, isLoading } = useQuery({
     queryKey: [`/api/providers/${id}`],
@@ -42,6 +104,78 @@ export default function ProviderProfile() {
     queryKey: [`/api/providers/${id}/services`],
     enabled: !!id,
   });
+
+  // Get selected service (after services are loaded)
+  const selectedService = services.find((s: any) => s.id.toString() === selectedServiceId);
+
+  // Handle booking submission
+  const handleBooking = () => {
+    const requiresTimeSlot = selectedService?.bookingType !== 'token';
+    
+    if (!selectedDate || !selectedServiceId) {
+      toast({
+        title: "Missing Information",
+        description: "Please select a date and service.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (requiresTimeSlot && !selectedTime) {
+      toast({
+        title: "Time Required",
+        description: "Please select a time slot for this appointment.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!title && selectedService?.bookingType !== 'token') {
+      toast({
+        title: "Title Required",
+        description: "Please enter an appointment title.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!selectedService) {
+      toast({
+        title: "Service Required",
+        description: "Please select a service to book.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const scheduledDate = new Date(`${selectedDate}T00:00:00`);
+    const startTime = selectedTime || "00:00";
+    const durationMinutes = selectedService.duration;
+    const [hours, minutes] = startTime.split(':').map(Number);
+    const endTimeHours = Math.floor((hours * 60 + minutes + durationMinutes) / 60);
+    const endTimeMinutes = (hours * 60 + minutes + durationMinutes) % 60;
+    const endTime = `${String(endTimeHours).padStart(2, '0')}:${String(endTimeMinutes).padStart(2, '0')}`;
+
+    const appointmentTitle = selectedService.bookingType === 'token'
+      ? `${selectedService.name} - ${new Date(selectedDate).toLocaleDateString()}`
+      : title;
+
+    const bookingData = {
+      providerId: parseInt(id!),
+      serviceId: parseInt(selectedServiceId),
+      title: appointmentTitle,
+      description,
+      scheduledDate: scheduledDate.toISOString(),
+      startTime,
+      endTime,
+      duration: durationMinutes,
+      type: appointmentType,
+      amount: parseFloat(selectedService.price || "0"),
+      currency: "₹",
+    };
+
+    bookingMutation.mutate(bookingData);
+  };
 
   if (isLoading) {
     return (
@@ -234,7 +368,13 @@ export default function ProviderProfile() {
                             <div className="text-lg font-bold text-slate-900">₹{service.price}</div>
                             <Button 
                               size="sm" 
-                              onClick={() => setLocation(`/booking/${provider.id}?service=${service.id}`)}
+                              onClick={() => {
+                                setSelectedServiceId(service.id.toString());
+                                setShowBookingForm(true);
+                                // Auto-select video/in-person based on provider capabilities
+                                if (provider.isVideoCallEnabled) setAppointmentType("video");
+                                else if (provider.isInPersonEnabled) setAppointmentType("in_person");
+                              }}
                               className="mt-2"
                             >
                               Book Now
@@ -272,6 +412,166 @@ export default function ProviderProfile() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Inline Booking Form */}
+            {showBookingForm && selectedService && (
+              <Card className="border-primary/20 bg-primary/5">
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle>Book {selectedService.name}</CardTitle>
+                    <p className="text-sm text-slate-600 mt-1">
+                      {selectedService.bookingType === 'token' 
+                        ? 'Select your preferred date for queue-based service'
+                        : 'Choose your appointment details'
+                      }
+                    </p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setShowBookingForm(false);
+                      setSelectedServiceId("");
+                      setSelectedDate("");
+                      setSelectedTime("");
+                      setTitle("");
+                      setDescription("");
+                    }}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {/* Service Details */}
+                  <div className="bg-white p-4 rounded-lg border">
+                    <div className="flex justify-between items-center mb-3">
+                      <h4 className="font-medium">{selectedService.name}</h4>
+                      <div className="text-xl font-bold text-primary">₹{selectedService.price}</div>
+                    </div>
+                    <div className="flex items-center space-x-4 text-sm text-slate-600">
+                      <span className="flex items-center">
+                        <Clock className="h-4 w-4 mr-1" />
+                        {selectedService.duration} min
+                      </span>
+                      <Badge variant="secondary" className="text-xs">
+                        {selectedService.bookingType}
+                      </Badge>
+                    </div>
+                  </div>
+
+                  {/* Date & Time Selection */}
+                  <div>
+                    <h4 className="font-medium text-slate-900 mb-3">
+                      {selectedService.bookingType === 'token' ? 'Select Date' : 'Select Date & Time'}
+                    </h4>
+                    <AvailabilityCalendar
+                      providerId={parseInt(id!)}
+                      selectedDate={selectedDate}
+                      selectedTime={selectedTime}
+                      onDateSelect={setSelectedDate}
+                      onTimeSelect={setSelectedTime}
+                      hideTimeSelection={selectedService.bookingType === 'token'}
+                    />
+                  </div>
+
+                  {/* Appointment Details */}
+                  <div>
+                    <h4 className="font-medium text-slate-900 mb-3">
+                      {selectedService.bookingType === 'token' ? 'Visit Details' : 'Appointment Details'}
+                    </h4>
+                    <div className="space-y-4">
+                      {selectedService.bookingType === 'token' ? (
+                        <div>
+                          <Label>Auto-generated Title</Label>
+                          <div className="mt-1 p-3 bg-slate-50 rounded-md border text-slate-700">
+                            {selectedService.name} - {selectedDate ? new Date(selectedDate).toLocaleDateString() : 'Select date'}
+                          </div>
+                        </div>
+                      ) : (
+                        <div>
+                          <Label htmlFor="title">Appointment Title *</Label>
+                          <Input
+                            id="title"
+                            placeholder="e.g., Consultation, Follow-up, etc."
+                            value={title}
+                            onChange={(e) => setTitle(e.target.value)}
+                            className="mt-1"
+                          />
+                        </div>
+                      )}
+
+                      <div>
+                        <Label htmlFor="description">
+                          {selectedService.bookingType === 'token' ? 'Visit Notes (Optional)' : 'Description (Optional)'}
+                        </Label>
+                        <Textarea
+                          id="description"
+                          placeholder={
+                            selectedService.bookingType === 'token' 
+                              ? "Any specific symptoms, concerns, or notes..."
+                              : "Describe what you'd like to discuss..."
+                          }
+                          value={description}
+                          onChange={(e) => setDescription(e.target.value)}
+                          className="mt-1"
+                          rows={3}
+                        />
+                      </div>
+
+                      <div>
+                        <Label>Meeting Type</Label>
+                        <RadioGroup 
+                          value={appointmentType} 
+                          onValueChange={(value: "video" | "in_person") => setAppointmentType(value)}
+                          className="mt-2"
+                        >
+                          {provider.isVideoCallEnabled && (
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem value="video" id="video" />
+                              <Label htmlFor="video" className="flex items-center">
+                                <Video className="h-4 w-4 mr-2" />
+                                Video Call
+                              </Label>
+                            </div>
+                          )}
+                          {provider.isInPersonEnabled && (
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem value="in_person" id="in_person" />
+                              <Label htmlFor="in_person" className="flex items-center">
+                                <MapPin className="h-4 w-4 mr-2" />
+                                In-Person
+                              </Label>
+                            </div>
+                          )}
+                        </RadioGroup>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Booking Summary & Action */}
+                  <div className="bg-white p-4 rounded-lg border">
+                    <div className="flex justify-between items-center mb-4">
+                      <span className="font-medium">Total</span>
+                      <span className="text-xl font-bold">₹{selectedService.price}</span>
+                    </div>
+                    <Button 
+                      onClick={handleBooking}
+                      disabled={
+                        !selectedDate || 
+                        !selectedService || 
+                        (selectedService?.bookingType !== 'token' && !selectedTime) ||
+                        (selectedService?.bookingType !== 'token' && !title) ||
+                        bookingMutation.isPending
+                      }
+                      className="w-full"
+                      size="lg"
+                    >
+                      {bookingMutation.isPending ? "Booking..." : "Confirm Booking"}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Reviews */}
             <Card>
